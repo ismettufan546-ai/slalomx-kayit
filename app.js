@@ -196,7 +196,10 @@
       const s = sonucHaritasi[i.istekId];
       if (!s) { kalan.push(i); return; }                       // bu gönderimde yoktu (sonradan eklendi)
       if (s.ok) {
-        if (s.kayit && s.kayit.kapiNo && i.islem !== 'reddet') {
+        if (i.islem === 'isaretle') {
+          bildir('✓ ' + ((s.kayit && s.kayit.pilot) || '') + ': ' +
+            (i.alan === 'kapi' ? 'Kapı No' : 'Ödeme') + (i.deger ? ' işaretlendi' : ' işareti kaldırıldı'), 'tamam');
+        } else if (s.kayit && s.kayit.kapiNo && i.islem !== 'reddet') {
           kapiGoster(s.kayit, i.eklenme);
         } else if (i.islem === 'reddet') {
           bildir('Kayıt reddedildi: ' + ((s.kayit && s.kayit.pilot) || ''), 'tamam');
@@ -266,7 +269,7 @@
 
   // ---------------- Liste görünümü ----------------
   function kuyruktakiIslem(kayitId) {
-    return kuyruk.find(function (i) { return i.kayitId === kayitId; });
+    return kuyruk.find(function (i) { return i.kayitId === kayitId && i.islem !== 'isaretle'; });
   }
 
   function aramaUyar(k, metin) {
@@ -282,10 +285,15 @@
     return '<div class="kart-arac">' + esc(arac || '—') +
       (k.plaka ? ' <span class="plaka">' + esc(k.plaka) + '</span>' : '') +
       (k.yil ? ' <span class="yil">' + esc(k.yil) + '</span>' : ' <span class="yil eksik">YIL YOK</span>') +
-      (k.kadin ? ' <span class="etiket">KADIN</span>' : '') + '</div>' +
-      '<div class="kart-bilgi">' + (k.telefon ? '📞 ' + esc(k.telefon) + ' · ' : '') +
-      esc(k.kaynak || '') + (k.formZamani ? ' · ' + esc(k.formZamani) : '') + '</div>' +
-      (k.not ? '<div class="kart-not">' + esc(k.not) + '</div>' : '');
+      (k.kadin ? ' <span class="etiket">KADIN</span>' : '') +
+      (k.genc ? ' <span class="etiket genc">GENÇ</span>' : '') + '</div>' +
+      (k.telefon ? '<div class="kart-tel">📞 ' + esc(k.telefon) + '</div>' : '') +
+      uyariNotu(k.not);
+  }
+  /** Nottan sadece ⚠ uyarıları (yıl yok, mükerrer) gösterilir; saat/masa kayıtları gösterilmez. */
+  function uyariNotu(not) {
+    const uyarilar = String(not || '').split(' | ').filter(function (p) { return p.indexOf('⚠') === 0; });
+    return uyarilar.length ? '<div class="kart-not">' + esc(uyarilar.join(' · ')) + '</div>' : '';
   }
 
   function cizBekleyen() {
@@ -346,15 +354,29 @@
       } else if (k.durum === 'Reddedildi' && k.masa) {
         alt = '<div class="durum-satir">🔒 ' + esc(k.masa) + ' reddetti</div>';
       }
+      if (k.durum === 'Onaylandı') alt = isaretlerHtml(k) + alt;
       return '<div class="kart' + (islem ? ' soluk' : '') + '"><div class="kart-ust"><div class="kapi' + (k.durum === 'Reddedildi' ? ' red' : '') + '">' +
         esc(k.kapiNo || '–') + '</div><div class="kart-govde">' +
-        '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) +
-        '<div class="kart-bilgi">' + esc(k.masa || '') +
-        (k.odeme ? ' · ' + esc(k.odeme) + ' ' + esc(k.tutar) : '') +
-        (k.islemZamani ? ' · ' + esc(k.islemZamani) : '') + '</div>' + alt +
+        '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) + alt +
         '</div></div></div>';
     }).join('');
     $('listeOnayli').innerHTML = (ustHtml + html) || '<div class="bos">Kayıt yok.</div>';
+  }
+
+  function isaretDurumu(k, alan) {
+    const bekleyen = kuyruk.filter(function (i) { return i.kayitId === k.id && i.islem === 'isaretle' && i.alan === alan; }).pop();
+    return { acik: bekleyen ? !!bekleyen.deger : !!(alan === 'kapi' ? k.kapiVerildi : k.odemeAlindi), bekliyor: !!bekleyen };
+  }
+  function isaretlerHtml(k) {
+    const kapi = isaretDurumu(k, 'kapi'), odeme = isaretDurumu(k, 'odeme');
+    const tus = function (alan, d, etiket, ek) {
+      return '<button class="isaret' + (d.acik ? ' acik' : '') + '" data-isaret="' + alan + '" data-id="' + esc(k.id) + '">' +
+        '<span class="kutu">' + (d.acik ? '✓' : '') + '</span>' + etiket + (ek ? '<small>' + esc(ek) + '</small>' : '') +
+        (d.bekliyor ? ' ⏳' : '') + '</button>';
+    };
+    return '<div class="isaretler">' +
+      tus('kapi', kapi, '🎫 Kapı No', '') +
+      tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + ' ' + k.tutar : '') + '</div>';
   }
 
   function cizAyarlar() {
@@ -446,12 +468,43 @@
     const form = $('formOnay');
     form.innerHTML = alanlarHtml(k, false);
     form.dataset.kayitId = kayitId;
+    form.dataset.mod = 'onay';
     $('pencere').classList.remove('gizli');
   }
   function pencereKapat() { $('pencere').classList.add('gizli'); }
 
+  function odemeAc(kayitId) {
+    const k = veri.kayitlar.find(function (x) { return x.id === kayitId; });
+    if (!k) return;
+    $('pencereBaslik').textContent = '💳 Ödeme — ' + k.pilot + (k.kapiNo ? ' (Kapı No ' + k.kapiNo + ')' : '');
+    const odemeler = (C.odemeTipleri || []).map(function (o, i) {
+      return '<label class="secim"><input type="radio" name="odeme" value="' + esc(o) + '"' +
+        ((k.odeme ? k.odeme === o : i === 0) ? ' checked' : '') + '><span>' + esc(o) + '</span></label>';
+    }).join('');
+    const form = $('formOnay');
+    form.innerHTML = '<div class="alan-baslik">Ödeme tipi</div><div class="secimler">' + odemeler + '</div>' +
+      '<label>Tutar *<input name="tutar" type="number" inputmode="decimal" min="0" step="any" value="' +
+      esc(k.tutar !== '' && k.tutar !== undefined && k.tutar !== null ? k.tutar : ayar.tutar) + '"></label>' +
+      '<div class="kart-butonlar"><button type="submit" class="btn birincil buyuk">💳 Ödeme Alındı</button>' +
+      '<button type="button" class="btn ince" data-kapat>Vazgeç</button></div>';
+    form.dataset.kayitId = kayitId;
+    form.dataset.mod = 'odeme';
+    $('pencere').classList.remove('gizli');
+  }
+
   $('formOnay').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (e.target.dataset.mod === 'odeme') {
+      const f = new FormData(e.target);
+      const odeme = f.get('odeme') || '';
+      let tutar = String(f.get('tutar') || '').replace(',', '.').trim();
+      if (odeme === 'Ücretsiz' && tutar === '') tutar = '0';
+      if (!odeme) { bildir('⚠ Ödeme tipini seçin.', 'hata'); return; }
+      if (tutar === '' || isNaN(Number(tutar)) || Number(tutar) < 0) { bildir('⚠ Tutarı girin. Ücretsiz için 0 yazın.', 'hata'); return; }
+      kuyrugaEkle({ islem: 'isaretle', kayitId: e.target.dataset.kayitId, alan: 'odeme', deger: true, odeme: odeme, tutar: tutar });
+      pencereKapat();
+      return;
+    }
     const d = formOku(e.target);
     const hata = formKontrol(d);
     if (hata) { bildir('⚠ ' + hata, 'hata'); return; }
@@ -496,6 +549,17 @@
     if (red) reddetSor(red.getAttribute('data-reddet'));
   });
   $('listeOnayli').addEventListener('click', function (e) {
+    const isaret = e.target.closest('[data-isaret]');
+    if (isaret) {
+      const id = isaret.getAttribute('data-id'), alan = isaret.getAttribute('data-isaret');
+      const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
+      const d = isaretDurumu(k, alan);
+      if (alan === 'odeme' && !d.acik) { odemeAc(id); return; }
+      if (d.acik && !confirm('"' + k.pilot + '" için ' + (alan === 'kapi' ? 'Kapı No verildi' : 'Ödeme alındı') +
+        ' işareti kaldırılsın mı?')) return;
+      kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: alan, deger: !d.acik });
+      return;
+    }
     const onay = e.target.closest('[data-onayla]');
     const red = e.target.closest('[data-reddet]');
     if (onay) onayAc(onay.getAttribute('data-onayla'));
