@@ -393,7 +393,7 @@
     };
     return '<div class="isaretler">' +
       tus('kapi', kapi, '🎫 Kapı No', '') +
-      tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + ' ' + k.tutar : '') + '</div>';
+      tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.tutar !== '' && k.tutar !== undefined ? k.tutar + ' TL' : '') + '</div>';
   }
 
   function cizAyarlar() {
@@ -565,7 +565,12 @@
       const id = isaret.getAttribute('data-id'), alan = isaret.getAttribute('data-isaret');
       const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
       const d = isaretDurumu(k, alan);
-      if (alan === 'odeme' && !d.acik) { odemeAc(id); return; }
+      if (alan === 'odeme' && !d.acik) {
+        // Tek dokunuş: ödeme alındı (tip/tutar sorulmaz; ücret Ayarlar'daki tutar)
+        kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: 'odeme', deger: true,
+                      odeme: k.odeme || (C.odemeTipleri || ['Nakit'])[0], tutar: ucret() });
+        return;
+      }
       if (d.acik && !confirm('"' + k.pilot + '" için ' + (alan === 'kapi' ? 'Kapı No verildi' : 'Ödeme alındı') +
         ' işareti kaldırılsın mı?')) return;
       kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: alan, deger: !d.acik });
