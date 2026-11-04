@@ -204,7 +204,7 @@
         return;
       }
       if (s.kod === 'MESGUL' || s.kod === 'SUNUCU') { kalan.push(i); return; }   // tekrar denenecek
-      if (s.kod === 'MUKERRER' && i.islem === 'masaKayit') { tekrarSor.push({ islem: i, sonuc: s }); return; }
+      if (s.kod === 'MUKERRER' && (i.islem === 'masaKayit' || i.islem === 'onayla')) { tekrarSor.push({ islem: i, sonuc: s }); return; }
       const ad = (i.alanlar && i.alanlar.pilot) || i.pilot || '';
       hataEkle((ad ? ad + ': ' : '') + s.hata);
       bildir('⚠ ' + (ad ? ad + ': ' : '') + s.hata, 'hata');
@@ -213,12 +213,39 @@
     yaz(D.kuyruk, kuyruk);
 
     tekrarSor.forEach(function (t) {
-      if (confirm('⚠ ' + t.sonuc.hata + '\n\nYine de yeni kayıt olarak eklensin mi?')) {
+      if (confirm('⚠ ' + t.sonuc.hata + '\n\nYine de ' + (t.islem.islem === 'onayla' ? 'onaylansın' : 'eklensin') + ' mi?')) {
         const yeni = Object.assign({}, t.islem, { yineDeEkle: true });
         delete yeni.istekId;
         kuyrugaEkle(yeni);
       }
     });
+  }
+
+  // ---------------- Mükerrer kontrolü ----------------
+  function ayniIsimliler(pilot, haricId) {
+    const a = normal(pilot);
+    return veri.kayitlar.filter(function (k) {
+      return k.id !== haricId && k.durum !== 'Reddedildi' && normal(k.pilot) === a;
+    });
+  }
+  function aracAnahtari(marka, model) { return normal(marka) + '|' + normal(model); }
+  /** Aynı isimli kayıt varsa sorar; true = devam et. */
+  function mukerrerSor(alanlar, haricId, eylem) {
+    const ayni = ayniIsimliler(alanlar.pilot, haricId);
+    if (!ayni.length) return { devam: true, yineDeEkle: false };
+    const benimArac = aracAnahtari(alanlar.marka, alanlar.model);
+    const ayniArac = ayni.some(function (k) { return aracAnahtari(k.marka, k.model) === benimArac; });
+    const satirlar = ayni.map(function (k) {
+      return '• ' + k.pilot + ' — ' + ([k.marka, k.model, k.yil].filter(Boolean).join(' ') || 'araç yok') +
+        ' (' + k.durum + (k.kapiNo ? ', Kapı No ' + k.kapiNo : '') + (k.masa ? ', ' + k.masa : '') + ')' +
+        (aracAnahtari(k.marka, k.model) === benimArac ? '  ← AYNI ARAÇ' : '');
+    });
+    const mesaj = '⚠ ' + (ayniArac ? 'AYNI PİLOT VE AYNI ARAÇ ZATEN KAYITLI' : 'BU PİLOT ZATEN KAYITLI') + '\n\n' +
+      satirlar.join('\n') + '\n\n' +
+      (ayniArac ? 'Büyük ihtimalle aynı kayıt (form iki kez doldurulmuş). Bu durumda İptal edip kaydı reddedin.\n\n'
+                : 'Pilot ikinci bir araçla yarışıyorsa onaylayabilirsiniz.\n\n') +
+      'Yine de ' + eylem + '?';
+    return confirm(mesaj) ? { devam: true, yineDeEkle: true } : { devam: false };
   }
 
   // ---------------- Büyük kapı numarası ----------------
@@ -412,7 +439,10 @@
     const d = formOku(e.target);
     const hata = formKontrol(d);
     if (hata) { bildir('⚠ ' + hata, 'hata'); return; }
-    kuyrugaEkle({ islem: 'onayla', kayitId: e.target.dataset.kayitId, alanlar: d.alanlar, odeme: d.odeme, tutar: d.tutar });
+    const kayitId = e.target.dataset.kayitId;
+    const sor = mukerrerSor(d.alanlar, kayitId, 'onaylıyor musunuz');
+    if (!sor.devam) return;
+    kuyrugaEkle({ islem: 'onayla', kayitId: kayitId, alanlar: d.alanlar, odeme: d.odeme, tutar: d.tutar, yineDeEkle: sor.yineDeEkle });
     pencereKapat();
     if (sonBaglanti === false || !navigator.onLine) {
       bildir('📶 İnternet yok. Onay kaydedildi, numara bağlantı gelince verilecek.', 'uyari');
@@ -431,15 +461,9 @@
     const d = formOku(e.target);
     const hata = formKontrol(d);
     if (hata) { bildir('⚠ ' + hata, 'hata'); return; }
-    const anahtar = normal(d.alanlar.pilot);
-    const ayni = veri.kayitlar.find(function (k) { return k.durum !== 'Reddedildi' && normal(k.pilot) === anahtar; });
-    let yineDeEkle = false;
-    if (ayni) {
-      if (!confirm('⚠ "' + ayni.pilot + '" adıyla zaten bir kayıt var (' + ayni.durum +
-        (ayni.kapiNo ? ', Kapı No ' + ayni.kapiNo : '') + ').\n\nAynı kişi değilse yine de eklensin mi?')) return;
-      yineDeEkle = true;
-    }
-    kuyrugaEkle({ islem: 'masaKayit', alanlar: d.alanlar, odeme: d.odeme, tutar: d.tutar, yineDeEkle: yineDeEkle });
+    const sor = mukerrerSor(d.alanlar, null, 'kaydediyor musunuz');
+    if (!sor.devam) return;
+    kuyrugaEkle({ islem: 'masaKayit', alanlar: d.alanlar, odeme: d.odeme, tutar: d.tutar, yineDeEkle: sor.yineDeEkle });
     yeniFormuHazirla();
     sekmeAc('onayli');
     if (sonBaglanti === false || !navigator.onLine) {
