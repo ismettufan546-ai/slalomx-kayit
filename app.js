@@ -333,12 +333,25 @@
     }).join('');
 
     const html = liste.filter(function (k) { return aramaUyar(k, ara); }).map(function (k) {
-      return '<div class="kart"><div class="kart-ust"><div class="kapi">' + esc(k.kapiNo || '–') + '</div><div class="kart-govde">' +
+      const islem = kuyruktakiIslem(k.id);
+      let alt = '';
+      if (islem) {
+        alt = '<div class="durum-satir sari">⏳ ' + (islem.islem === 'reddet' ? 'Red gönderiliyor' : 'Onay gönderiliyor') + '</div>';
+      } else if (k.slalomx) {
+        alt = '<div class="durum-satir yesil">✓ ' + esc(C.program || 'Program') + '\'e alındı</div>';
+      } else if (k.durum === 'Onaylandı' && k.masa === ayar.masa) {
+        alt = '<div class="kart-butonlar"><button class="btn tehlike ince" data-reddet="' + esc(k.id) + '">Reddedilenlere al</button></div>';
+      } else if (k.durum === 'Reddedildi' && (!k.masa || k.masa === ayar.masa || k.masa === 'SlalomX')) {
+        alt = '<div class="kart-butonlar"><button class="btn birincil" data-onayla="' + esc(k.id) + '">↩ Onaya al</button></div>';
+      } else if (k.durum === 'Reddedildi' && k.masa) {
+        alt = '<div class="durum-satir">🔒 ' + esc(k.masa) + ' reddetti</div>';
+      }
+      return '<div class="kart' + (islem ? ' soluk' : '') + '"><div class="kart-ust"><div class="kapi' + (k.durum === 'Reddedildi' ? ' red' : '') + '">' +
+        esc(k.kapiNo || '–') + '</div><div class="kart-govde">' +
         '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) +
         '<div class="kart-bilgi">' + esc(k.masa || '') +
         (k.odeme ? ' · ' + esc(k.odeme) + ' ' + esc(k.tutar) : '') +
-        (k.islemZamani ? ' · ' + esc(k.islemZamani) : '') + '</div>' +
-        (k.slalomx ? '<div class="durum-satir yesil">✓ ' + esc(C.program || 'Program') + '\'e alındı</div>' : '') +
+        (k.islemZamani ? ' · ' + esc(k.islemZamani) : '') + '</div>' + alt +
         '</div></div></div>';
     }).join('');
     $('listeOnayli').innerHTML = (ustHtml + html) || '<div class="bos">Kayıt yok.</div>';
@@ -425,8 +438,11 @@
   function onayAc(kayitId) {
     const k = veri.kayitlar.find(function (x) { return x.id === kayitId; });
     if (!k) return;
-    if (k.masa && k.masa !== ayar.masa) { bildir('🔒 Bu kayıt ' + k.masa + ' tarafından işleniyor.', 'hata'); return; }
-    $('pencereBaslik').textContent = 'Kaydı Onayla';
+    const serbest = !k.masa || k.masa === ayar.masa || (k.masa === 'SlalomX' && k.durum === 'Reddedildi');
+    if (!serbest) { bildir('🔒 Bu kayıt ' + k.masa + ' tarafından işleniyor.', 'hata'); return; }
+    $('pencereBaslik').textContent = k.durum === 'Reddedildi'
+      ? 'Onaya Al' + (k.kapiNo ? ' (eski Kapı No ' + k.kapiNo + ' geri verilecek)' : '')
+      : 'Kaydı Onayla';
     const form = $('formOnay');
     form.innerHTML = alanlarHtml(k, false);
     form.dataset.kayitId = kayitId;
@@ -477,14 +493,24 @@
     const onay = e.target.closest('[data-onayla]');
     const red = e.target.closest('[data-reddet]');
     if (onay) onayAc(onay.getAttribute('data-onayla'));
-    if (red) {
-      const id = red.getAttribute('data-reddet');
-      const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
-      const sebep = prompt('"' + (k.pilot || '') + '" kaydı reddedilsin mi?\n\nSebep (isteğe bağlı):', '');
-      if (sebep === null) return;
-      kuyrugaEkle({ islem: 'reddet', kayitId: id, sebep: sebep });
-    }
+    if (red) reddetSor(red.getAttribute('data-reddet'));
   });
+  $('listeOnayli').addEventListener('click', function (e) {
+    const onay = e.target.closest('[data-onayla]');
+    const red = e.target.closest('[data-reddet]');
+    if (onay) onayAc(onay.getAttribute('data-onayla'));
+    if (red) reddetSor(red.getAttribute('data-reddet'));
+  });
+  function reddetSor(id) {
+    const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
+    const ek = k.durum === 'Onaylandı'
+      ? '\n\nBu kayıt ONAYLI (Kapı No ' + k.kapiNo + '). Reddedilirse ' + (C.program || 'ana program') +
+        ' bu kaydı almaz. Tekrar onaya alınırsa aynı numara geri verilir.'
+      : '';
+    const sebep = prompt('"' + (k.pilot || '') + '" kaydı reddedilsin mi?' + ek + '\n\nSebep (isteğe bağlı):', '');
+    if (sebep === null) return;
+    kuyrugaEkle({ islem: 'reddet', kayitId: id, sebep: sebep });
+  }
 
   // ---------------- Sekmeler ----------------
   function sekmeAc(ad) {

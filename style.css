@@ -133,3 +133,5 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 .bildirim.uyari { background: #3b2a05; border-color: var(--sari); }
 .bildirim.tamam { background: #06291a; border-color: var(--yesil); }
 .plaka { font-size: 12px; font-weight: 800; border: 1px solid var(--soluk); border-radius: 4px; padding: 0 5px; color: var(--yazi); }
+
+.kapi.red { background: var(--panel2); color: var(--kirmizi); text-decoration: line-through; }
