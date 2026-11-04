@@ -137,7 +137,8 @@
         baglantiGoster(false);
         return;
       }
-      veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '', zaman: saat() };
+      veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '',
+               klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
       yeniKayitKontrol();
       baglantiGoster(true);
@@ -280,11 +281,27 @@
     });
   }
 
+  function klasmanBul(yil) {
+    const n = Number(yil);
+    if (!n) return '';
+    const tanim = String(veri.klasmanlar || C.klasmanlar || '');
+    const parca = tanim.split(';').map(function (p) {
+      const m = p.trim().match(/^([^:]+):(\d{4})-(\d{4})$/);
+      return m ? { ad: m[1].trim(), bas: Number(m[2]), bit: Number(m[3]) } : null;
+    }).filter(Boolean).find(function (k) { return n >= k.bas && n <= k.bit; });
+    return parca ? parca.ad : '';
+  }
+  function ucret() {
+    const t = String(ayar.tutar || '').replace(',', '.').trim();
+    return t !== '' && !isNaN(Number(t)) ? t : String(C.varsayilanTutar || 0);
+  }
+
   function kartAlt(k) {
     const arac = [k.marka, k.model].filter(Boolean).join(' ');
     return '<div class="kart-arac">' + esc(arac || '—') +
       (k.plaka ? ' <span class="plaka">' + esc(k.plaka) + '</span>' : '') +
       (k.yil ? ' <span class="yil">' + esc(k.yil) + '</span>' : ' <span class="yil eksik">YIL YOK</span>') +
+      (klasmanBul(k.yil) ? ' <span class="klasman">' + esc(klasmanBul(k.yil)) + '</span>' : '') +
       (k.kadin ? ' <span class="etiket">KADIN</span>' : '') +
       (k.genc ? ' <span class="etiket genc">GENÇ</span>' : '') + '</div>' +
       (k.telefon ? '<div class="kart-tel">📞 ' + esc(k.telefon) + '</div>' : '') +
@@ -419,7 +436,7 @@
       '<label class="onay-kutu"><input type="checkbox" name="kadin"' + (k.kadin ? ' checked' : '') + '> Kadın kategorisi</label>' +
       '<label>Not<input name="not" value="' + esc(k.not) + '"></label>' +
       '<div class="alan-baslik">Ödeme</div><div class="secimler">' + odemeler + '</div>' +
-      '<label>Tutar *<input name="tutar" type="number" inputmode="decimal" min="0" step="any" value="' + esc(ayar.tutar) + '"></label>' +
+      '<label>Tutar *<input name="tutar" type="number" inputmode="decimal" min="0" step="any" value="' + esc(ucret()) + '"></label>' +
       '<div class="kart-butonlar">' +
       '<button type="submit" class="btn birincil buyuk">' + (yeni ? '＋ Kaydet ve Numara Ver' : '✅ Onayla ve Numara Ver') + '</button>' +
       (yeni ? '' : '<button type="button" class="btn ince" data-kapat>Vazgeç</button>') + '</div>';
@@ -477,34 +494,28 @@
     const k = veri.kayitlar.find(function (x) { return x.id === kayitId; });
     if (!k) return;
     $('pencereBaslik').textContent = '💳 Ödeme — ' + k.pilot + (k.kapiNo ? ' (Kapı No ' + k.kapiNo + ')' : '');
-    const odemeler = (C.odemeTipleri || []).map(function (o, i) {
-      return '<label class="secim"><input type="radio" name="odeme" value="' + esc(o) + '"' +
-        ((k.odeme ? k.odeme === o : i === 0) ? ' checked' : '') + '><span>' + esc(o) + '</span></label>';
-    }).join('');
     const form = $('formOnay');
-    form.innerHTML = '<div class="alan-baslik">Ödeme tipi</div><div class="secimler">' + odemeler + '</div>' +
-      '<label>Tutar *<input name="tutar" type="number" inputmode="decimal" min="0" step="any" value="' +
-      esc(k.tutar !== '' && k.tutar !== undefined && k.tutar !== null ? k.tutar : ayar.tutar) + '"></label>' +
-      '<div class="kart-butonlar"><button type="submit" class="btn birincil buyuk">💳 Ödeme Alındı</button>' +
-      '<button type="button" class="btn ince" data-kapat>Vazgeç</button></div>';
+    form.innerHTML = '<p class="aciklama">Ücret: <b>' + esc(ucret()) + ' TL</b> — ödeme tipine dokunun.</p>' +
+      '<div class="secimler odeme-tus">' + (C.odemeTipleri || []).map(function (o) {
+        return '<button type="button" class="btn birincil buyuk" data-odeme-tipi="' + esc(o) + '">' + esc(o) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="kart-butonlar"><button type="button" class="btn ince" data-kapat>Vazgeç</button></div>';
     form.dataset.kayitId = kayitId;
     form.dataset.mod = 'odeme';
     $('pencere').classList.remove('gizli');
   }
+  $('formOnay').addEventListener('click', function (e) {
+    const tus = e.target.closest('[data-odeme-tipi]');
+    if (!tus) return;
+    const odeme = tus.getAttribute('data-odeme-tipi');
+    kuyrugaEkle({ islem: 'isaretle', kayitId: e.currentTarget.dataset.kayitId, alan: 'odeme', deger: true,
+                  odeme: odeme, tutar: odeme === 'Ücretsiz' ? '0' : ucret() });
+    pencereKapat();
+  });
 
   $('formOnay').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (e.target.dataset.mod === 'odeme') {
-      const f = new FormData(e.target);
-      const odeme = f.get('odeme') || '';
-      let tutar = String(f.get('tutar') || '').replace(',', '.').trim();
-      if (odeme === 'Ücretsiz' && tutar === '') tutar = '0';
-      if (!odeme) { bildir('⚠ Ödeme tipini seçin.', 'hata'); return; }
-      if (tutar === '' || isNaN(Number(tutar)) || Number(tutar) < 0) { bildir('⚠ Tutarı girin. Ücretsiz için 0 yazın.', 'hata'); return; }
-      kuyrugaEkle({ islem: 'isaretle', kayitId: e.target.dataset.kayitId, alan: 'odeme', deger: true, odeme: odeme, tutar: tutar });
-      pencereKapat();
-      return;
-    }
+    if (e.target.dataset.mod === 'odeme') return;
     const d = formOku(e.target);
     const hata = formKontrol(d);
     if (hata) { bildir('⚠ ' + hata, 'hata'); return; }

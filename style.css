@@ -150,3 +150,6 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 .kart-arac { font-size: 16px; }
 .kart-tel { margin-top: 4px; font-size: 16px; font-weight: 600; }
 .etiket.genc { background: #2563eb; }
+
+.klasman { font-size: 13px; font-weight: 900; background: var(--vurgu); color: #111; border-radius: 4px; padding: 0 6px; }
+.odeme-tus .btn { padding: 18px 10px; font-size: 19px; }
