@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SlalomX Kayıt">
+  <title>SlalomX Kayıt</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="ust">
+    <div class="ust-sol">
+      <div class="baslik" id="baslik">SlalomX Kayıt</div>
+      <div class="alt-baslik"><span id="yarisAdi"></span> <span id="masaEtiket" class="masa-rozet"></span></div>
+    </div>
+    <div class="ust-sag">
+      <div id="baglanti" class="baglanti">…</div>
+      <div class="son-no">Son No <b id="sonNo">–</b></div>
+    </div>
+  </header>
+
+  <div id="uyariBandi" class="uyari-bandi gizli">🔔 Yeni kayıt bekliyor</div>
+
+  <nav class="sekmeler">
+    <button data-sekme="bekleyen" class="aktif">Bekleyenler <span id="sayBekleyen" class="sayi">0</span></button>
+    <button data-sekme="onayli">Onaylılar <span id="sayOnayli" class="sayi">0</span></button>
+    <button data-sekme="yeni">＋ Yeni</button>
+    <button data-sekme="ayarlar">⚙</button>
+  </nav>
+
+  <main>
+    <!-- BEKLEYENLER -->
+    <section id="s-bekleyen" class="sekme">
+      <input id="araBekleyen" class="ara" type="search" placeholder="🔍 İsim, marka, telefon ara">
+      <div id="listeBekleyen" class="liste"></div>
+    </section>
+
+    <!-- ONAYLILAR -->
+    <section id="s-onayli" class="sekme gizli">
+      <div class="filtre">
+        <button data-filtre="benim" class="aktif">Benim masam</button>
+        <button data-filtre="tumu">Tümü</button>
+        <button data-filtre="red">Reddedilen</button>
+      </div>
+      <input id="araOnayli" class="ara" type="search" placeholder="🔍 İsim veya kapı no ara">
+      <div id="listeOnayli" class="liste"></div>
+    </section>
+
+    <!-- YENİ KAYIT (masada) -->
+    <section id="s-yeni" class="sekme gizli">
+      <h2>Masada Yeni Kayıt</h2>
+      <p class="aciklama">Formu doldurmamış pilotu buradan kaydedin. Kapı numarası sıradan verilir.</p>
+      <form id="formYeni" class="form" autocomplete="off"></form>
+    </section>
+
+    <!-- AYARLAR -->
+    <section id="s-ayarlar" class="sekme gizli">
+      <h2>Ayarlar</h2>
+      <div class="form">
+        <label>Web uygulaması adresi
+          <input id="ayUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+        </label>
+        <label>Bağlantı anahtarı
+          <input id="ayAnahtar" type="text" autocapitalize="characters" placeholder="Kurulumda gösterilen anahtar">
+        </label>
+        <label>Bu telefonun masası
+          <select id="ayMasa"></select>
+        </label>
+        <label>Varsayılan kayıt ücreti
+          <input id="ayTutar" type="number" inputmode="decimal" min="0" placeholder="Örn. 500">
+        </label>
+        <button id="ayKaydet" class="btn birincil">💾 Kaydet ve bağlantıyı dene</button>
+        <div id="ayDurum" class="ay-durum"></div>
+      </div>
+
+      <h3>Gönderilmeyi bekleyen işlemler</h3>
+      <div id="kuyrukListe" class="kucuk-liste"></div>
+      <h3>Hatalar</h3>
+      <div id="hataListe" class="kucuk-liste"></div>
+      <button id="hataTemizle" class="btn ince">Hata listesini temizle</button>
+    </section>
+  </main>
+
+  <!-- ONAY PENCERESİ -->
+  <div id="pencere" class="pencere gizli">
+    <div class="pencere-kutu">
+      <div class="pencere-baslik" id="pencereBaslik">Kaydı Onayla</div>
+      <form id="formOnay" class="form" autocomplete="off"></form>
+    </div>
+  </div>
+
+  <!-- BÜYÜK KAPI NO -->
+  <div id="kapiEkrani" class="kapi-ekrani gizli">
+    <div class="kapi-etiket">KAPI NO</div>
+    <div class="kapi-no" id="kapiNoBuyuk">–</div>
+    <div class="kapi-pilot" id="kapiPilot"></div>
+    <div class="kapi-alt" id="kapiAlt"></div>
+    <button id="kapiTamam" class="btn birincil buyuk">Tamam</button>
+  </div>
+
+  <div id="bildirim" class="bildirim gizli"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+// ============================================================
+//  Kayıt masası ayarları — SlalomX
+//  (TimeX Kayıt için bu dosyanın kopyasında sadece adlar değişir)
+// ============================================================
+window.KAYIT_AYAR = {
+  uygulamaAdi: 'SlalomX Kayıt',
+  program: 'SlalomX',
+  // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
+  odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],
+  masalar: ['Masa 1', 'Masa 2', 'Masa 3'],
+  yenilemeSn: 15,          // kaç saniyede bir liste yenilensin
+  depoOnEki: 'sx_'         // telefonda saklanan veri öneki (TimeX'te 'tx_')
+};
