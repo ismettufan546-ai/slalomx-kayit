@@ -75,9 +75,12 @@
         <label>Varsayılan kayıt ücreti
           <input id="ayTutar" type="number" inputmode="decimal" min="0" placeholder="2000">
         </label>
-        <label>WhatsApp kayıt mesajı
-          <textarea id="ayWaMesaj" rows="9"></textarea>
-          <small class="ipucu">Kullanılabilir alanlar: {pilot} {yaris} {kapi} {arac} {klasman} {plaka} {odeme} — değeri boş olan alanın satırı mesajdan çıkarılır.</small>
+        <label>WhatsApp — kayıt alındı mesajı (Bekleyenler, düzeltme linkiyle)
+          <textarea id="ayWaKayitMesaj" rows="10"></textarea>
+        </label>
+        <label>WhatsApp — kayıt tamamlandı mesajı (onay / Kapı No)
+          <textarea id="ayWaMesaj" rows="10"></textarea>
+          <small class="ipucu">Kullanılabilir alanlar: {pilot} {yaris} {kapi} {arac} {klasman} {plaka} {odeme} {link} — {link} sporcunun kendine özel düzeltme bağlantısıdır. Değeri boş olan alanın satırı mesajdan çıkarılır.</small>
         </label>
         <button id="ayKaydet" class="btn birincil">💾 Kaydet ve bağlantıyı dene</button>
         <div id="ayDurum" class="ay-durum"></div>

@@ -17,7 +17,7 @@
   function oku(k, v) { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : v; } catch (e) { return v; } }
   function yaz(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* hafıza dolu/kapalı */ } }
 
-  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '', waMesaj: '' }, oku(D.ayar, {}));
+  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '', waMesaj: '', waKayitMesaj: '' }, oku(D.ayar, {}));
   let waGiden = oku(D.whatsapp, {});   // kayıt id -> gönderim saati (bu telefondan)
   let veri = oku(D.liste, { kayitlar: [], sonKapiNo: 0, yaris: '', zaman: '' });
   let kuyruk = oku(D.kuyruk, []);
@@ -262,13 +262,16 @@
     else if (d.length === 10 && d[0] === '5') d = '90' + d;           // 533...  -> 90533...
     return d.length >= 11 ? d : '';
   }
+  function waTur(k) { return k.durum === 'Onaylandı' && k.kapiNo ? 'onay' : 'kayit'; }
   function waMesaj(k) {
-    const sablon = (ayar.waMesaj || '').trim() || C.whatsappMesaji || '';
+    const sablon = waTur(k) === 'onay'
+      ? ((ayar.waMesaj || '').trim() || C.whatsappMesaji || '')
+      : ((ayar.waKayitMesaj || '').trim() || C.whatsappKayitMesaji || '');
     const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
     const odeme = k.odeme ? k.odeme + (k.odeme !== 'Ücretsiz' && k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar + ' TL' : '') : '';
     const degerler = {
       pilot: k.pilot || '', yaris: veri.yaris || C.varsayilanYarisAdi || 'yarış', kapi: k.kapiNo || '',
-      arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || ''
+      arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || '', link: k.link || ''
     };
     // Değeri boş olan alanın satırı tamamen çıkarılır
     return sablon.split('\n').filter(function (satir) {
@@ -281,8 +284,10 @@
   function waGonder(k) {
     const no = waNumara(k.telefon);
     if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
+    if (waTur(k) === 'kayit' && !k.link &&
+      !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok (form dışı kayıt ya da link birkaç dakika içinde gelecek).\n\nMesaj linksiz gönderilsin mi?')) return;
     const url = 'https://wa.me/' + no + '?text=' + encodeURIComponent(waMesaj(k));
-    waGiden[k.id] = saat();
+    waGiden[k.id + ':' + waTur(k)] = saat();
     yaz(D.whatsapp, waGiden);
     const pencere = window.open(url, '_blank');
     if (!pencere) location.href = url;
@@ -290,9 +295,11 @@
   }
   function waDugme(k) {
     if (!k.telefon) return '';
-    const giden = waGiden[k.id];
+    const tur = waTur(k);
+    const giden = waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '');
+    const ad = tur === 'onay' ? 'Kayıt tamam' : 'Kayıt alındı + düzeltme linki';
     return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
-      (giden ? 'WhatsApp gönderildi ' + esc(giden) + ' · tekrar' : 'WhatsApp\'tan Bildir') + '</button>';
+      (giden ? 'WhatsApp gönderildi ' + esc(giden) + ' · tekrar' : 'WhatsApp: ' + ad) + '</button>';
   }
 
   // ---------------- Büyük kapı numarası ----------------
@@ -305,7 +312,7 @@
     if (!s) { $('kapiEkrani').classList.add('gizli'); return; }
     kapiEkraniKayit = s.kayit;
     $('kapiWa').classList.toggle('gizli', !waNumara(s.kayit.telefon));
-    $('kapiWa').textContent = waGiden[s.kayit.id] ? '💬 WhatsApp gönderildi · tekrar gönder' : '💬 WhatsApp\'tan Bildir';
+    $('kapiWa').textContent = (waGiden[s.kayit.id + ':onay'] || waGiden[s.kayit.id]) ? '💬 WhatsApp gönderildi · tekrar gönder' : '💬 WhatsApp\'tan Bildir';
     $('kapiNoBuyuk').textContent = s.kayit.kapiNo;
     $('kapiPilot').textContent = s.kayit.pilot || '';
     $('kapiAlt').textContent = [s.kayit.marka, s.kayit.model, s.kayit.yil].filter(Boolean).join(' · ') +
@@ -386,7 +393,8 @@
       } else {
         butonlar = '<div class="kart-butonlar">' +
           '<button class="btn birincil" data-onayla="' + esc(k.id) + '">✅ Onayla</button>' +
-          '<button class="btn tehlike ince" data-reddet="' + esc(k.id) + '">Reddet</button></div>';
+          '<button class="btn tehlike ince" data-reddet="' + esc(k.id) + '">Reddet</button></div>' +
+          (k.telefon ? '<div class="kart-butonlar">' + waDugme(k) + '</div>' : '');
       }
       return '<div class="kart' + (bekleyenIslem ? ' soluk' : '') + '">' +
         '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) + butonlar + '</div>';
@@ -613,6 +621,12 @@
 
   // ---------------- Liste butonları ----------------
   $('listeBekleyen').addEventListener('click', function (e) {
+    const wa = e.target.closest('[data-wa]');
+    if (wa) {
+      const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
+      if (k) { waGonder(k); cizBekleyen(); }
+      return;
+    }
     const onay = e.target.closest('[data-onayla]');
     const red = e.target.closest('[data-reddet]');
     if (onay) onayAc(onay.getAttribute('data-onayla'));
@@ -692,6 +706,7 @@
     $('ayAnahtar').value = ayar.anahtar;
     $('ayTutar').value = ayar.tutar;
     $('ayWaMesaj').value = ayar.waMesaj || C.whatsappMesaji || '';
+    $('ayWaKayitMesaj').value = ayar.waKayitMesaj || C.whatsappKayitMesaji || '';
     $('ayMasa').innerHTML = (C.masalar || ['Masa 1']).map(function (m) {
       return '<option' + (m === ayar.masa ? ' selected' : '') + '>' + esc(m) + '</option>';
     }).join('');
@@ -708,7 +723,8 @@
     ayar = {
       url: url, anahtar: $('ayAnahtar').value.trim().toUpperCase(),
       masa: $('ayMasa').value, tutar: $('ayTutar').value.trim(),
-      waMesaj: $('ayWaMesaj').value.trim() === (C.whatsappMesaji || '').trim() ? '' : $('ayWaMesaj').value.trim()
+      waMesaj: $('ayWaMesaj').value.trim() === (C.whatsappMesaji || '').trim() ? '' : $('ayWaMesaj').value.trim(),
+      waKayitMesaj: $('ayWaKayitMesaj').value.trim() === (C.whatsappKayitMesaji || '').trim() ? '' : $('ayWaKayitMesaj').value.trim()
     };
     yaz(D.ayar, ayar);
     yeniFormuHazirla();
