@@ -274,7 +274,11 @@
   function waMesaj(k) {
     let sablon = waSablon(waTur(k));
     const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
-    const odeme = k.odeme ? k.odeme + (k.odeme !== 'Ücretsiz' && k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar + ' TL' : '') : '';
+    // '2.000 TL (Nakit)' / 'Ücretsiz'
+    const tutarSayi = Number(String(k.tutar === undefined ? '' : k.tutar).replace(/\./g, '').replace(',', '.'));
+    const odeme = !k.odeme ? '' : (k.odeme === 'Ücretsiz' ? 'Ücretsiz'
+      : (String(k.tutar || '').trim() !== '' && !isNaN(tutarSayi)
+        ? tutarSayi.toLocaleString('tr-TR') + ' TL (' + k.odeme + ')' : k.odeme));
     const degerler = {
       pilot: k.pilot || '', yaris: veri.yaris || C.varsayilanYarisAdi || 'yarış', kapi: k.kapiNo || '',
       arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || '', link: k.link || '',

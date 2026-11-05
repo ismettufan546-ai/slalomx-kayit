@@ -4,7 +4,7 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v19',
+  surum: 'v20',
   program: 'SlalomX',
   // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
   odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],
@@ -24,8 +24,10 @@ window.KAYIT_AYAR = {
     '📍 Yer: {yer}\n' +
     '⏰ Start: {saat}\n' +
     '\n' +
+    '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
+    '💰 Ödeme: {odeme}\n' +
     '\n' +
     '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz:\n' +
     '{link}\n' +
