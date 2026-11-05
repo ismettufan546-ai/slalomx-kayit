@@ -81,7 +81,14 @@
             <option value="web">WhatsApp Web (tarayıcı)</option>
           </select>
         </label>
-        <p class="ipucu">💬 WhatsApp mesaj metinleri SlalomX &gt; Yarış Bilgileri &gt; WhatsApp Mesajları'ndan yönetilir; burada kendiliğinden güncellenir.</p>
+        <div class="wa-aktif">
+          <div class="wa-aktif-baslik">💬 Kullanılan WhatsApp mesajları</div>
+          <p class="ipucu">Metinler SlalomX &gt; Yarış Bilgileri &gt; WhatsApp Mesajları'ndan yönetilir; burada kendiliğinden güncellenir.</p>
+          <div class="wa-aktif-ad">1 · Kayıt alındı <span id="waDurumKayit" class="wa-rozet"></span></div>
+          <pre id="waMetinKayit" class="wa-metin"></pre>
+          <div class="wa-aktif-ad">3 · Kayıt tamamlandı <span id="waDurumOnay" class="wa-rozet"></span></div>
+          <pre id="waMetinOnay" class="wa-metin"></pre>
+        </div>
         <button id="ayKaydet" class="btn birincil">💾 Kaydet ve bağlantıyı dene</button>
         <div id="ayDurum" class="ay-durum"></div>
       </div>

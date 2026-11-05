@@ -144,6 +144,7 @@
                waKayit: r.waKayit || '', waOnay: r.waOnay || '',
                klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
+      waAktifGoster();
       yeniKayitKontrol();
       baglantiGoster(true);
       ciz();
@@ -723,7 +724,19 @@
   });
 
   // ---------------- Ayarlar ----------------
+  function waAktifGoster() {
+    [['kayit', 'Kayit', C.whatsappKayitMesaji], ['onay', 'Onay', C.whatsappMesaji]].forEach(function (t) {
+      const metin = waSablon(t[0]);
+      const varsayilan = metin.trim() === String(t[2] || '').trim();
+      const rozet = $('waDurum' + t[1]), kutu = $('waMetin' + t[1]);
+      if (!rozet || !kutu) return;
+      rozet.textContent = varsayilan ? '✔ VARSAYILAN' : '✏ SlalomX\'te DEĞİŞTİRİLMİŞ';
+      rozet.className = 'wa-rozet ' + (varsayilan ? 'v' : 'd');
+      kutu.textContent = metin;
+    });
+  }
   function ayarlariDoldur() {
+    waAktifGoster();
     $('ayUrl').value = ayar.url;
     $('ayAnahtar').value = ayar.anahtar;
     $('ayTutar').value = ayar.tutar;
