@@ -730,7 +730,7 @@
       const varsayilan = metin.trim() === String(t[2] || '').trim();
       const rozet = $('waDurum' + t[1]), kutu = $('waMetin' + t[1]);
       if (!rozet || !kutu) return;
-      rozet.textContent = varsayilan ? '✔ VARSAYILAN' : '✏ SlalomX\'te DEĞİŞTİRİLMİŞ';
+      rozet.textContent = varsayilan ? 'ORİJİNAL METİN' : '✏ SlalomX\'te DEĞİŞTİRİLDİ';
       rozet.className = 'wa-rozet ' + (varsayilan ? 'v' : 'd');
       kutu.textContent = metin;
     });
