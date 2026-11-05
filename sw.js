@@ -1,6 +1,6 @@
 // Uygulama dosyalarını telefonda saklar: internet yokken de açılır.
 // Dosyalarda değişiklik yaptığınızda SURUM numarasını artırın.
-const SURUM = 'sx-kayit-v28';
+const SURUM = 'sx-kayit-v29';
 const DOSYALAR = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
 

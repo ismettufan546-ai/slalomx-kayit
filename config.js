@@ -4,7 +4,7 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v28',
+  surum: 'v29',
   program: 'SlalomX',
   // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
   odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],
@@ -27,6 +27,7 @@ window.KAYIT_AYAR = {
     '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
+    '🚘 Plaka: {plaka}\n' +
     '💰 Ödeme: {odeme}\n' +
     '\n' +
     'İyi yarışlar!\n' +
@@ -55,6 +56,7 @@ window.KAYIT_AYAR = {
     '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
+    '🚘 Plaka: {plaka}\n' +
     '\n' +
     'Lütfen start saatinden önce kayıt masasına uğrayınız.\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği',
