@@ -286,8 +286,8 @@
   function waGonder(k) {
     const no = waNumara(k.telefon);
     if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
-    if (waTur(k) === 'kayit' && !k.link &&
-      !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok (form dışı kayıt ya da link birkaç dakika içinde gelecek).\n\nMesaj linksiz gönderilsin mi?')) return;
+    if (waTur(k) === 'kayit' && !k.link && /\{link\}/.test((ayar.waKayitMesaj || '') || C.whatsappKayitMesaji || '') &&
+      !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok.\n\nMesaj linksiz gönderilsin mi?')) return;
     const url = 'https://wa.me/' + no + '?text=' + encodeURIComponent(waMesaj(k));
     waGiden[k.id + ':' + waTur(k)] = saat();
     yaz(D.whatsapp, waGiden);
@@ -299,7 +299,7 @@
     if (!k.telefon) return '';
     const tur = waTur(k);
     const giden = waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '');
-    const ad = tur === 'onay' ? 'Kayıt tamam' : 'Kayıt alındı + düzeltme linki';
+    const ad = tur === 'onay' ? 'Kayıt tamam' : 'Kayıt alındı';
     return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
       (giden ? 'WhatsApp gönderildi ' + esc(giden) + ' · tekrar' : 'WhatsApp: ' + ad) + '</button>';
   }
