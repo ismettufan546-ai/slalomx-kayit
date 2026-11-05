@@ -23,7 +23,6 @@ window.KAYIT_AYAR = {
     '📍 Yer: {yer}\n' +
     '⏰ Start: {saat}\n' +
     '\n' +
-    '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
     '\n' +
