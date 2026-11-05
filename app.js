@@ -10,14 +10,15 @@
   const ON = C.depoOnEki || 'sx_';
   const D = {
     ayar: ON + 'ayar', liste: ON + 'liste', kuyruk: ON + 'kuyruk',
-    gorulen: ON + 'gorulen', hatalar: ON + 'hatalar'
+    gorulen: ON + 'gorulen', hatalar: ON + 'hatalar', whatsapp: ON + 'whatsapp'
   };
 
   // ---------------- Telefon hafızası ----------------
   function oku(k, v) { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : v; } catch (e) { return v; } }
   function yaz(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* hafıza dolu/kapalı */ } }
 
-  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '' }, oku(D.ayar, {}));
+  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '', waMesaj: '' }, oku(D.ayar, {}));
+  let waGiden = oku(D.whatsapp, {});   // kayıt id -> gönderim saati (bu telefondan)
   let veri = oku(D.liste, { kayitlar: [], sonKapiNo: 0, yaris: '', zaman: '' });
   let kuyruk = oku(D.kuyruk, []);
   let hatalar = oku(D.hatalar, []);
@@ -29,6 +30,7 @@
   let tekrarGerek = false;          // senkron sırasında yeni işlem eklendiyse
   let sonBaglanti = null;           // true / false / null
   const kapiSirasi = [];            // gösterilecek büyük kapı numaraları
+  let kapiEkraniKayit = null;
 
   const $ = function (id) { return document.getElementById(id); };
 
@@ -252,6 +254,47 @@
     return confirm(mesaj) ? { devam: true, yineDeEkle: true } : { devam: false };
   }
 
+  // ---------------- WhatsApp bildirimi (ücretsiz: WhatsApp hazır mesajla açılır, Gönder'e basılır) ----------------
+  function waNumara(tel) {
+    let d = String(tel || '').replace(/\D/g, '');
+    if (d.indexOf('00') === 0) d = d.slice(2);
+    if (d.length === 11 && d[0] === '0') d = '90' + d.slice(1);       // 0533... -> 90533...
+    else if (d.length === 10 && d[0] === '5') d = '90' + d;           // 533...  -> 90533...
+    return d.length >= 11 ? d : '';
+  }
+  function waMesaj(k) {
+    const sablon = (ayar.waMesaj || '').trim() || C.whatsappMesaji || '';
+    const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
+    const odeme = k.odeme ? k.odeme + (k.odeme !== 'Ücretsiz' && k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar + ' TL' : '') : '';
+    const degerler = {
+      pilot: k.pilot || '', yaris: veri.yaris || C.varsayilanYarisAdi || 'yarış', kapi: k.kapiNo || '',
+      arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || ''
+    };
+    // Değeri boş olan alanın satırı tamamen çıkarılır
+    return sablon.split('\n').filter(function (satir) {
+      const m = satir.match(/\{(\w+)\}/g) || [];
+      return m.every(function (a) { return degerler[a.slice(1, -1)] !== ''; });
+    }).join('\n').replace(/\{(\w+)\}/g, function (_t, ad) {
+      return degerler[ad] !== undefined ? degerler[ad] : '';
+    });
+  }
+  function waGonder(k) {
+    const no = waNumara(k.telefon);
+    if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
+    const url = 'https://wa.me/' + no + '?text=' + encodeURIComponent(waMesaj(k));
+    waGiden[k.id] = saat();
+    yaz(D.whatsapp, waGiden);
+    const pencere = window.open(url, '_blank');
+    if (!pencere) location.href = url;
+    cizOnayli();
+  }
+  function waDugme(k) {
+    if (!k.telefon) return '';
+    const giden = waGiden[k.id];
+    return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
+      (giden ? 'WhatsApp gönderildi ' + esc(giden) + ' · tekrar' : 'WhatsApp\'tan Bildir') + '</button>';
+  }
+
   // ---------------- Büyük kapı numarası ----------------
   function kapiGoster(kayit, eklenme) {
     kapiSirasi.push({ kayit: kayit, eklenme: eklenme });
@@ -260,6 +303,9 @@
   function sonrakiKapi() {
     const s = kapiSirasi.shift();
     if (!s) { $('kapiEkrani').classList.add('gizli'); return; }
+    kapiEkraniKayit = s.kayit;
+    $('kapiWa').classList.toggle('gizli', !waNumara(s.kayit.telefon));
+    $('kapiWa').textContent = waGiden[s.kayit.id] ? '💬 WhatsApp gönderildi · tekrar gönder' : '💬 WhatsApp\'tan Bildir';
     $('kapiNoBuyuk').textContent = s.kayit.kapiNo;
     $('kapiPilot').textContent = s.kayit.pilot || '';
     $('kapiAlt').textContent = [s.kayit.marka, s.kayit.model, s.kayit.yil].filter(Boolean).join(' · ') +
@@ -381,7 +427,7 @@
       } else if (k.durum === 'Reddedildi' && k.masa) {
         alt = '<div class="durum-satir">🔒 ' + esc(k.masa) + ' reddetti</div>';
       }
-      if (k.durum === 'Onaylandı') alt = isaretlerHtml(k) + alt;
+      if (k.durum === 'Onaylandı') alt = isaretlerHtml(k) + (k.kapiNo ? '<div class="kart-butonlar">' + waDugme(k) + '</div>' : '') + alt;
       return '<div class="kart' + (islem ? ' soluk' : '') + '"><div class="kart-ust"><div class="kapi' + (k.durum === 'Reddedildi' ? ' red' : '') + '">' +
         esc(k.kapiNo || '–') + '</div><div class="kart-govde">' +
         '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) + alt +
@@ -573,6 +619,12 @@
     if (red) reddetSor(red.getAttribute('data-reddet'));
   });
   $('listeOnayli').addEventListener('click', function (e) {
+    const wa = e.target.closest('[data-wa]');
+    if (wa) {
+      const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
+      if (k) waGonder(k);
+      return;
+    }
     const isaret = e.target.closest('[data-isaret]');
     if (isaret) {
       const id = isaret.getAttribute('data-id'), alan = isaret.getAttribute('data-isaret');
@@ -626,12 +678,20 @@
   $('araBekleyen').addEventListener('input', cizBekleyen);
   $('araOnayli').addEventListener('input', cizOnayli);
   $('kapiTamam').addEventListener('click', sonrakiKapi);
+  $('kapiWa').addEventListener('click', function () {
+    if (!kapiEkraniKayit) return;
+    // Kapı ekranındaki kayıt, listedeki güncel hâliyle (ödeme vb.) gönderilir
+    const k = veri.kayitlar.find(function (x) { return x.id === kapiEkraniKayit.id; }) || kapiEkraniKayit;
+    waGonder(k);
+    $('kapiWa').textContent = '💬 WhatsApp gönderildi · tekrar gönder';
+  });
 
   // ---------------- Ayarlar ----------------
   function ayarlariDoldur() {
     $('ayUrl').value = ayar.url;
     $('ayAnahtar').value = ayar.anahtar;
     $('ayTutar').value = ayar.tutar;
+    $('ayWaMesaj').value = ayar.waMesaj || C.whatsappMesaji || '';
     $('ayMasa').innerHTML = (C.masalar || ['Masa 1']).map(function (m) {
       return '<option' + (m === ayar.masa ? ' selected' : '') + '>' + esc(m) + '</option>';
     }).join('');
@@ -647,7 +707,8 @@
       !confirm('Gönderilmemiş ' + kuyruk.length + ' işlem var. Masa değişirse bu işlemler eski masa adıyla gönderilir. Devam edilsin mi?')) return;
     ayar = {
       url: url, anahtar: $('ayAnahtar').value.trim().toUpperCase(),
-      masa: $('ayMasa').value, tutar: $('ayTutar').value.trim()
+      masa: $('ayMasa').value, tutar: $('ayTutar').value.trim(),
+      waMesaj: $('ayWaMesaj').value.trim() === (C.whatsappMesaji || '').trim() ? '' : $('ayWaMesaj').value.trim()
     };
     yaz(D.ayar, ayar);
     yeniFormuHazirla();

@@ -75,6 +75,10 @@
         <label>Varsayılan kayıt ücreti
           <input id="ayTutar" type="number" inputmode="decimal" min="0" placeholder="2000">
         </label>
+        <label>WhatsApp kayıt mesajı
+          <textarea id="ayWaMesaj" rows="9"></textarea>
+          <small class="ipucu">Kullanılabilir alanlar: {pilot} {yaris} {kapi} {arac} {klasman} {plaka} {odeme} — değeri boş olan alanın satırı mesajdan çıkarılır.</small>
+        </label>
         <button id="ayKaydet" class="btn birincil">💾 Kaydet ve bağlantıyı dene</button>
         <div id="ayDurum" class="ay-durum"></div>
       </div>
@@ -101,6 +105,7 @@
     <div class="kapi-no" id="kapiNoBuyuk">–</div>
     <div class="kapi-pilot" id="kapiPilot"></div>
     <div class="kapi-alt" id="kapiAlt"></div>
+    <button id="kapiWa" class="btn wa buyuk">💬 WhatsApp'tan Bildir</button>
     <button id="kapiTamam" class="btn birincil buyuk">Tamam</button>
   </div>
 

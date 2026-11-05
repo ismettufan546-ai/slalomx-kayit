@@ -153,3 +153,10 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 
 .klasman { font-size: 13px; font-weight: 900; background: var(--vurgu); color: #111; border-radius: 4px; padding: 0 6px; }
 .odeme-tus .btn { padding: 18px 10px; font-size: 19px; }
+
+.btn.wa { background: #25d366; color: #052e16; }
+.btn.wa.gitti { background: transparent; color: #25d366; border: 1px solid #25d366; font-size: 14px; }
+.kapi-ekrani .btn.wa { margin-bottom: 12px; }
+.form textarea { padding: 12px; border-radius: 10px; border: 1px solid var(--cizgi); background: var(--zemin);
+  color: var(--yazi); font-size: 15px; font-family: inherit; width: 100%; resize: vertical; }
+.ipucu { font-weight: 500; color: var(--soluk); font-size: 12px; }
