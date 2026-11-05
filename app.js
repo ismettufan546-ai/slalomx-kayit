@@ -291,6 +291,16 @@
     }).filter(Boolean).find(function (k) { return n >= k.bas && n <= k.bit; });
     return parca ? parca.ad : '';
   }
+  function telBicim(v) {
+    const ham = String(v === null || v === undefined ? '' : v).replace(/\s+/g, ' ').trim();
+    if (!ham) return '';
+    let d = ham.replace(/\D/g, '');
+    if (d.length === 14 && d.indexOf('0090') === 0) d = '0' + d.slice(4);
+    else if (d.length === 12 && d.indexOf('90') === 0) d = '0' + d.slice(2);
+    else if (d.length === 10 && d[0] !== '0') d = '0' + d;
+    if (d.length === 11 && d[0] === '0') return d.slice(0, 4) + ' ' + d.slice(4, 7) + ' ' + d.slice(7, 9) + ' ' + d.slice(9);
+    return ham;
+  }
   function ucret() {
     const t = String(ayar.tutar || '').replace(',', '.').trim();
     return t !== '' && !isNaN(Number(t)) ? t : String(C.varsayilanTutar || 0);
@@ -304,7 +314,7 @@
       (klasmanBul(k.yil) ? ' <span class="klasman">' + esc(klasmanBul(k.yil)) + '</span>' : '') +
       (k.kadin ? ' <span class="etiket">KADIN</span>' : '') +
       (k.genc ? ' <span class="etiket genc">GENÇ</span>' : '') + '</div>' +
-      (k.telefon ? '<div class="kart-tel">📞 ' + esc(k.telefon) + '</div>' : '') +
+      (k.telefon ? '<div class="kart-tel">📞 ' + esc(telBicim(k.telefon)) + '</div>' : '') +
       uyariNotu(k.not);
   }
   /** Nottan sadece ⚠ uyarıları (yıl yok, mükerrer) gösterilir; saat/masa kayıtları gösterilmez. */
@@ -425,7 +435,7 @@
     }).join('');
     return '' +
       '<label>Pilot (Ad Soyad) *<input name="pilot" required value="' + esc(k.pilot) + '"></label>' +
-      '<label>Telefon<input name="telefon" type="tel" inputmode="tel" value="' + esc(k.telefon) + '"></label>' +
+      '<label>Telefon<input name="telefon" type="tel" inputmode="tel" placeholder="0533 860 54 27" value="' + esc(telBicim(k.telefon)) + '"></label>' +
       '<div class="iki">' +
       '<label>Marka<input name="marka" value="' + esc(k.marka) + '"></label>' +
       '<label>Model<input name="model" value="' + esc(k.model) + '"></label></div>' +
@@ -449,7 +459,7 @@
     if (odeme === 'Ücretsiz' && tutar === '') tutar = '0';
     return {
       alanlar: {
-        pilot: buyuk(f.get('pilot')), telefon: String(f.get('telefon') || '').trim(),
+        pilot: buyuk(f.get('pilot')), telefon: telBicim(f.get('telefon')),
         marka: buyuk(f.get('marka')), model: buyuk(f.get('model')), plaka: buyuk(f.get('plaka')),
         yil: String(f.get('yil') || '').trim(), dogum: String(f.get('dogum') || '').trim(),
         kadin: !!f.get('kadin'), not: buyuk(f.get('not'))
@@ -468,6 +478,9 @@
   }
 
   function odemeDegisti(form) {
+    form.addEventListener('focusout', function (e) {
+      if (e.target.name === 'telefon') e.target.value = telBicim(e.target.value);
+    });
     form.addEventListener('change', function (e) {
       if (e.target.name === 'odeme' && e.target.value === 'Ücretsiz') form.elements.tutar.value = '0';
     });
