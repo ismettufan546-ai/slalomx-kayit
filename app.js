@@ -142,6 +142,7 @@
       veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '',
                yarisTarihi: r.yarisTarihi || '', yarisYeri: r.yarisYeri || '', startSaati: r.startSaati || '',
                waKayit: r.waKayit || '', waOnay: r.waOnay || '', waHatirlatma: r.waHatirlatma || '',
+               waTesekkur: r.waTesekkur || '', waSonuclar: r.waSonuclar || '',
                klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
       waAktifGoster();
@@ -266,7 +267,15 @@
     return d.length >= 11 ? d : '';
   }
   // Hangi mesajın gideceğini kullanıcı seçer (1-2-3); öneri: onaylı + kapı no varsa 3, yoksa 1
-  const WA_TURLER = [['kayit', '1 · Kayıt alındı'], ['hatirlatma', '2 · Hatırlatma'], ['onay', '3 · Kayıt tamamlandı']];
+  const WA_TURLER = [['kayit', '1 · Kayıt alındı'], ['hatirlatma', '2 · Hatırlatma'], ['onay', '3 · Kayıt tamamlandı'],
+    ['tesekkur', '4 · Yarış sonrası']];
+  // 4. mesaj için SlalomX'in yazdığı sonuçlar (kapı no ya da pilot adıyla); sonuç yoksa boş
+  function waSonuc(k) {
+    let s = {};
+    try { s = JSON.parse(veri.waSonuclar || '{}') || {}; } catch (e) { s = {}; }
+    const ad = 'p:' + String(k.pilot || '').trim().replace(/\s+/g, ' ').toUpperCase();
+    return (k.kapiNo !== undefined && k.kapiNo !== '' && s['k:' + k.kapiNo]) || s[ad] || {};
+  }
   function waTur(k) {
     const v = ayar.waVarsayilan || 'otomatik';
     if (v !== 'otomatik') return v;                      // Ayarlar'da seçilen mesaj
@@ -277,6 +286,7 @@
   // Mesaj metinleri SlalomX > Yarış Bilgileri > WhatsApp Mesajları'ndan gelir (tablo üzerinden)
   function waSablon(tur) {
     if (tur === 'onay') return (veri.waOnay || '').trim() || C.whatsappMesaji || '';
+    if (tur === 'tesekkur') return (veri.waTesekkur || '').trim() || C.whatsappTesekkurMesaji || '';
     if (tur === 'hatirlatma') return (veri.waHatirlatma || '').trim() || C.whatsappHatirlatmaMesaji || '';
     return (veri.waKayit || '').trim() || C.whatsappKayitMesaji || '';
   }
@@ -293,6 +303,8 @@
       arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || '', link: k.link || '',
       tarih: veri.yarisTarihi || '', yer: veri.yarisYeri || '', saat: veri.startSaati || ''
     };
+    const sonuc = waSonuc(k);
+    ['sira', 'klasman_sira', 'ozel_sira', 'ham_sure', 'sure'].forEach(function (a) { degerler[a] = sonuc[a] || ''; });
     // Değeri boş olan alanın satırı tamamen çıkarılır
     if (!degerler.link) sablon = sablon.replace(/^.*\n?.*\{link\}.*(\n|$)/m, function (m) {
       return /:\s*\n/.test(m) ? '' : m;     // 'düzeltebilirsiniz:' + link satırı birlikte çıkar
@@ -760,7 +772,7 @@
   // ---------------- Ayarlar ----------------
   function waAktifGoster() {
     [['kayit', 'Kayit', C.whatsappKayitMesaji], ['hatirlatma', 'Hatirlatma', C.whatsappHatirlatmaMesaji],
-     ['onay', 'Onay', C.whatsappMesaji]].forEach(function (t) {
+     ['onay', 'Onay', C.whatsappMesaji], ['tesekkur', 'Tesekkur', C.whatsappTesekkurMesaji]].forEach(function (t) {
       const metin = waSablon(t[0]);
       const varsayilan = metin.trim() === String(t[2] || '').trim();
       const rozet = $('waDurum' + t[1]), kutu = $('waMetin' + t[1]);
