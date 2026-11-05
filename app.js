@@ -141,7 +141,7 @@
       }
       veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '',
                yarisTarihi: r.yarisTarihi || '', yarisYeri: r.yarisYeri || '', startSaati: r.startSaati || '',
-               waKayit: r.waKayit || '', waOnay: r.waOnay || '',
+               waKayit: r.waKayit || '', waOnay: r.waOnay || '', waHatirlatma: r.waHatirlatma || '',
                klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
       waAktifGoster();
@@ -265,15 +265,19 @@
     else if (d.length === 10 && d[0] === '5') d = '90' + d;           // 533...  -> 90533...
     return d.length >= 11 ? d : '';
   }
+  // Hangi mesajın gideceğini kullanıcı seçer (1-2-3); öneri: onaylı + kapı no varsa 3, yoksa 1
+  const WA_TURLER = [['kayit', '1 · Kayıt alındı'], ['hatirlatma', '2 · Hatırlatma'], ['onay', '3 · Kayıt tamamlandı']];
   function waTur(k) { return k.durum === 'Onaylandı' && k.kapiNo ? 'onay' : 'kayit'; }
+  function waTurAdi(tur) { const t = WA_TURLER.find(function (x) { return x[0] === tur; }); return t ? t[1] : tur; }
+  function waGidenZaman(k, tur) { return waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '') || ''; }
   // Mesaj metinleri SlalomX > Yarış Bilgileri > WhatsApp Mesajları'ndan gelir (tablo üzerinden)
   function waSablon(tur) {
-    return tur === 'onay'
-      ? ((veri.waOnay || '').trim() || C.whatsappMesaji || '')
-      : ((veri.waKayit || '').trim() || C.whatsappKayitMesaji || '');
+    if (tur === 'onay') return (veri.waOnay || '').trim() || C.whatsappMesaji || '';
+    if (tur === 'hatirlatma') return (veri.waHatirlatma || '').trim() || C.whatsappHatirlatmaMesaji || '';
+    return (veri.waKayit || '').trim() || C.whatsappKayitMesaji || '';
   }
-  function waMesaj(k) {
-    let sablon = waSablon(waTur(k));
+  function waMesaj(k, tur) {
+    let sablon = waSablon(tur || waTur(k));
     const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
     // '2.000 TL (Nakit)' / 'Ücretsiz'
     const tutarSayi = Number(String(k.tutar === undefined ? '' : k.tutar).replace(/\./g, '').replace(',', '.'));
@@ -296,13 +300,38 @@
       return degerler[ad] !== undefined ? degerler[ad] : '';
     }).replace(/\n{3,}/g, '\n\n');
   }
-  function waGonder(k) {
+  // Mesaj seçme penceresi: 1-2-3 düğmeleri, gönderilenlerin saati, seçilenin önizlemesi
+  function waSec(k, sonra) {
+    if (!waNumara(k.telefon)) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
+    let secili = waTur(k);
+    const p = $('waSecim');
+    function ciz() {
+      $('waSecimPilot').textContent = (k.kapiNo ? k.kapiNo + ' · ' : '') + (k.pilot || '');
+      $('waSecimTurler').innerHTML = WA_TURLER.map(function (t) {
+        const g = waGidenZaman(k, t[0]);
+        return '<button class="btn wa-tur' + (t[0] === secili ? ' secili' : '') + '" data-tur="' + t[0] + '">' +
+          '<span>' + esc(t[1]) + (t[0] === waTur(k) ? ' <em>önerilen</em>' : '') + '</span>' +
+          (g ? '<small>✔ gönderildi ' + esc(g) + '</small>' : '') + '</button>';
+      }).join('');
+      $('waSecimOnizleme').textContent = waMesaj(k, secili);
+    }
+    $('waSecimTurler').onclick = function (e) {
+      const b = e.target.closest('[data-tur]');
+      if (b) { secili = b.getAttribute('data-tur'); ciz(); }
+    };
+    $('waSecimGonder').onclick = function () { p.classList.add('gizli'); waGonder(k, secili); if (sonra) sonra(); };
+    $('waSecimIptal').onclick = function () { p.classList.add('gizli'); };
+    ciz();
+    p.classList.remove('gizli');
+  }
+  function waGonder(k, tur) {
+    tur = tur || waTur(k);
     const no = waNumara(k.telefon);
     if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
-    if (waTur(k) === 'kayit' && !k.link && /\{link\}/.test(waSablon('kayit')) &&
+    if (!k.link && /\{link\}/.test(waSablon(tur)) &&
       !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok.\n\nMesaj linksiz gönderilsin mi?')) return;
-    const metin = encodeURIComponent(waMesaj(k));
-    waGiden[k.id + ':' + waTur(k)] = saat();
+    const metin = encodeURIComponent(waMesaj(k, tur));
+    waGiden[k.id + ':' + tur] = saat();
     yaz(D.whatsapp, waGiden);
     // wa.me yönlendirmesi emojileri bozuyor (�) ve her seferinde yeni sayfa açıyordu:
     //  - telefonda WhatsApp uygulaması doğrudan açılır (yeni sayfa yok)
@@ -318,11 +347,10 @@
   }
   function waDugme(k) {
     if (!k.telefon) return '';
-    const tur = waTur(k);
-    const giden = waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '');
-    const ad = tur === 'onay' ? 'Kayıt tamam' : 'Kayıt alındı';
-    return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
-      (giden ? 'WhatsApp gönderildi ' + esc(giden) + ' · tekrar' : 'WhatsApp: ' + ad) + '</button>';
+    const gidenler = WA_TURLER.filter(function (t) { return waGidenZaman(k, t[0]); })
+      .map(function (t) { return t[1].split(' ')[0]; });
+    return '<button class="btn wa' + (gidenler.length ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 WhatsApp mesajı gönder' +
+      (gidenler.length ? ' · gönderilen: ' + esc(gidenler.join(', ')) : '') + '</button>';
   }
 
   // ---------------- Büyük kapı numarası ----------------
@@ -335,7 +363,7 @@
     if (!s) { $('kapiEkrani').classList.add('gizli'); return; }
     kapiEkraniKayit = s.kayit;
     $('kapiWa').classList.toggle('gizli', !waNumara(s.kayit.telefon));
-    $('kapiWa').textContent = (waGiden[s.kayit.id + ':onay'] || waGiden[s.kayit.id]) ? '💬 WhatsApp gönderildi · tekrar gönder' : '💬 WhatsApp\'tan Bildir';
+    $('kapiWa').textContent = '💬 WhatsApp mesajı gönder';
     $('kapiNoBuyuk').textContent = s.kayit.kapiNo;
     $('kapiPilot').textContent = s.kayit.pilot || '';
     $('kapiAlt').textContent = [s.kayit.marka, s.kayit.model, s.kayit.yil].filter(Boolean).join(' · ') +
@@ -647,7 +675,7 @@
     const wa = e.target.closest('[data-wa]');
     if (wa) {
       const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
-      if (k) { waGonder(k); cizBekleyen(); }
+      if (k) waSec(k, cizBekleyen);
       return;
     }
     const onay = e.target.closest('[data-onayla]');
@@ -659,7 +687,7 @@
     const wa = e.target.closest('[data-wa]');
     if (wa) {
       const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
-      if (k) waGonder(k);
+      if (k) waSec(k);
       return;
     }
     const isaret = e.target.closest('[data-isaret]');
@@ -719,13 +747,13 @@
     if (!kapiEkraniKayit) return;
     // Kapı ekranındaki kayıt, listedeki güncel hâliyle (ödeme vb.) gönderilir
     const k = veri.kayitlar.find(function (x) { return x.id === kapiEkraniKayit.id; }) || kapiEkraniKayit;
-    waGonder(k);
-    $('kapiWa').textContent = '💬 WhatsApp gönderildi · tekrar gönder';
+    waSec(k);
   });
 
   // ---------------- Ayarlar ----------------
   function waAktifGoster() {
-    [['kayit', 'Kayit', C.whatsappKayitMesaji], ['onay', 'Onay', C.whatsappMesaji]].forEach(function (t) {
+    [['kayit', 'Kayit', C.whatsappKayitMesaji], ['hatirlatma', 'Hatirlatma', C.whatsappHatirlatmaMesaji],
+     ['onay', 'Onay', C.whatsappMesaji]].forEach(function (t) {
       const metin = waSablon(t[0]);
       const varsayilan = metin.trim() === String(t[2] || '').trim();
       const rozet = $('waDurum' + t[1]), kutu = $('waMetin' + t[1]);

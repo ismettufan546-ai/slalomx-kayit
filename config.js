@@ -4,7 +4,7 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v23',
+  surum: 'v24',
   program: 'SlalomX',
   // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
   odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],
@@ -30,6 +30,20 @@ window.KAYIT_AYAR = {
     '💰 Ödeme: {odeme}\n' +
     '\n' +
     'İyi yarışlar!\n' +
+    'Kıbrıs Türk Klasik Otomobil Derneği',
+  // 2 · Hatırlatma (yarıştan önce)
+  whatsappHatirlatmaMesaji: 'Sayın {pilot},\n' +
+    'Yarışta görüşmek üzere! 🏁\n' +
+    '\n' +
+    '🏁 Yarış: {yaris}\n' +
+    '📅 Tarih: {tarih}\n' +
+    '📍 Yer: {yer}\n' +
+    '⏰ Start: {saat}\n' +
+    '\n' +
+    '🔢 Kapı No: {kapi}\n' +
+    '🚗 Araç: {arac}\n' +
+    '\n' +
+    'Lütfen start saatinden önce kayıt masasına uğrayınız.\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği',
   // Form doldurulunca (Bekleyenler) gönderilecek mesaj -- {link}: kişiye özel form düzeltme bağlantısı
   whatsappKayitMesaji: 'Sayın {pilot},\n' +

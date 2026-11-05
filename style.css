@@ -169,3 +169,18 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 .wa-rozet.d { background: #713f12; color: #fde68a; }
 .wa-metin { white-space: pre-wrap; font: 13px/1.4 system-ui, sans-serif; background: #0b141a; color: #e9edef;
   border-radius: 10px; padding: 10px; margin: 0; max-height: 260px; overflow: auto; }
+
+.wa-secim { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.72); display: flex;
+  align-items: flex-end; justify-content: center; padding: 12px; }
+.wa-secim-kutu { background: var(--kart, #111827); border: 1px solid var(--cizgi); border-radius: 16px; width: 100%;
+  max-width: 520px; max-height: 92vh; overflow: auto; padding: 16px; }
+.wa-secim-baslik { font-weight: 800; font-size: 18px; }
+.wa-secim-pilot { color: var(--vurgu); font-weight: 700; margin: 4px 0 12px; }
+.wa-secim-turler { display: grid; gap: 8px; margin-bottom: 12px; }
+.btn.wa-tur { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left;
+  background: #2b313b; color: #fff; border: 2px solid transparent; }
+.btn.wa-tur.secili { border-color: #25d366; background: #12321f; }
+.btn.wa-tur em { font-style: normal; font-size: 11px; color: #fde68a; margin-left: 6px; }
+.btn.wa-tur small { color: #86efac; font-weight: 700; white-space: nowrap; }
+.wa-secim-alt { display: flex; gap: 10px; margin-top: 12px; }
+.wa-secim-alt .btn { flex: 1; }

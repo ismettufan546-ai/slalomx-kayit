@@ -86,6 +86,8 @@
           <p class="ipucu">Metinler SlalomX &gt; Yarış Bilgileri &gt; WhatsApp Mesajları'ndan yönetilir; burada kendiliğinden güncellenir.</p>
           <div class="wa-aktif-ad">1 · Kayıt alındı <span id="waDurumKayit" class="wa-rozet"></span></div>
           <pre id="waMetinKayit" class="wa-metin"></pre>
+          <div class="wa-aktif-ad">2 · Hatırlatma <span id="waDurumHatirlatma" class="wa-rozet"></span></div>
+          <pre id="waMetinHatirlatma" class="wa-metin"></pre>
           <div class="wa-aktif-ad">3 · Kayıt tamamlandı <span id="waDurumOnay" class="wa-rozet"></span></div>
           <pre id="waMetinOnay" class="wa-metin"></pre>
         </div>
@@ -118,6 +120,20 @@
     <div class="kapi-alt" id="kapiAlt"></div>
     <button id="kapiWa" class="btn wa buyuk">💬 WhatsApp'tan Bildir</button>
     <button id="kapiTamam" class="btn birincil buyuk">Tamam</button>
+  </div>
+
+  <!-- WHATSAPP MESAJ SEÇİMİ -->
+  <div id="waSecim" class="wa-secim gizli">
+    <div class="wa-secim-kutu">
+      <div class="wa-secim-baslik">💬 Hangi mesaj gönderilsin?</div>
+      <div class="wa-secim-pilot" id="waSecimPilot"></div>
+      <div id="waSecimTurler" class="wa-secim-turler"></div>
+      <pre id="waSecimOnizleme" class="wa-metin"></pre>
+      <div class="wa-secim-alt">
+        <button id="waSecimIptal" class="btn">Vazgeç</button>
+        <button id="waSecimGonder" class="btn wa">💬 WhatsApp'ta aç</button>
+      </div>
+    </div>
   </div>
 
   <div id="bildirim" class="bildirim gizli"></div>
