@@ -1,6 +1,6 @@
 // Uygulama dosyalarını telefonda saklar: internet yokken de açılır.
 // Dosyalarda değişiklik yaptığınızda SURUM numarasını artırın.
-const SURUM = 'sx-kayit-v15';
+const SURUM = 'sx-kayit-v16';
 const DOSYALAR = ['./', './index.html', './style.css', './app.js', './config.js', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png'];
 
@@ -22,7 +22,8 @@ self.addEventListener('fetch', function (e) {
   const istek = e.request;
   if (istek.method !== 'GET' || new URL(istek.url).origin !== self.location.origin) return;
   e.respondWith(
-    fetch(istek).then(function (yanit) {
+    // cache: 'no-cache' -> tarayıcının ara belleğindeki eski dosya değil, sunucudaki güncel dosya gelsin
+    fetch(istek.mode === 'navigate' ? istek : new Request(istek, { cache: 'no-cache' })).then(function (yanit) {
       const kopya = yanit.clone();
       caches.open(SURUM).then(function (c) { c.put(istek, kopya); });
       return yanit;

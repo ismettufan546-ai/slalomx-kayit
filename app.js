@@ -762,6 +762,7 @@
   setInterval(senkron, (C.yenilemeSn || 15) * 1000);
   senkron();
 
+  try { $('surumYazi').textContent = 'Uygulama sürümü: ' + (C.surum || '?'); } catch (e) { /* yok */ }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(function () { /* çevrimdışı önbellek kurulamadı */ });
   }
