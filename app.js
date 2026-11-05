@@ -140,6 +140,7 @@
         return;
       }
       veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '',
+               yarisTarihi: r.yarisTarihi || '', yarisYeri: r.yarisYeri || '', startSaati: r.startSaati || '',
                klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
       yeniKayitKontrol();
@@ -271,7 +272,8 @@
     const odeme = k.odeme ? k.odeme + (k.odeme !== 'Ücretsiz' && k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar + ' TL' : '') : '';
     const degerler = {
       pilot: k.pilot || '', yaris: veri.yaris || C.varsayilanYarisAdi || 'yarış', kapi: k.kapiNo || '',
-      arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || '', link: k.link || ''
+      arac: arac.trim(), klasman: klasmanBul(k.yil), odeme: odeme, plaka: k.plaka || '', link: k.link || '',
+      tarih: veri.yarisTarihi || '', yer: veri.yarisYeri || '', saat: veri.startSaati || ''
     };
     // Değeri boş olan alanın satırı tamamen çıkarılır
     return sablon.split('\n').filter(function (satir) {

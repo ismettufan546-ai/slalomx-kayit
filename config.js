@@ -16,28 +16,36 @@ window.KAYIT_AYAR = {
   varsayilanYarisAdi: 'KTKOD Klasik Otomobil Slalom yarışı',
   // Kayıt onaylanınca WhatsApp'tan gönderilecek mesaj (Ayarlar'dan değiştirilebilir)
   whatsappMesaji: 'Sayın {pilot},\n' +
-    '{yaris} kaydınız tamamlandı. ✅\n' +
+    'Yarış kaydınız tamamlandı. ✅\n' +
     '\n' +
-    '🏁 Kapı No: {kapi}\n' +
+    '🏁 Yarış: {yaris}\n' +
+    '📅 Tarih: {tarih}\n' +
+    '📍 Yer: {yer}\n' +
+    '⏰ Start: {saat}\n' +
+    '\n' +
+    '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
     '💳 Ödeme: {odeme}\n' +
     '\n' +
-    '✏ Bilgilerinizde hata varsa size özel bu bağlantıdan düzeltebilirsiniz:\n' +
-    '{link}\n' +
+    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz: {link}\n' +
     '\n' +
     'İyi yarışlar!\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği',
   // Form doldurulunca (Bekleyenler) gönderilecek mesaj -- {link}: kişiye özel form düzeltme bağlantısı
   whatsappKayitMesaji: 'Sayın {pilot},\n' +
-    '{yaris} için kaydınız alındı. ✅\n' +
+    'Yarış kaydınız alındı. ✅\n' +
+    '\n' +
+    '🏁 Yarış: {yaris}\n' +
+    '📅 Tarih: {tarih}\n' +
+    '📍 Yer: {yer}\n' +
+    '⏰ Start: {saat}\n' +
     '\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
-    '🔢 Plaka: {plaka}\n' +
+    '🚘 Plaka: {plaka}\n' +
     '\n' +
-    '✏ Bilgilerinizde hata varsa size özel bu bağlantıdan düzeltebilirsiniz:\n' +
-    '{link}\n' +
+    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz: {link}\n' +
     '\n' +
     'Kapı numaranız kayıt masasında verilecektir.\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği'
