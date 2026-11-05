@@ -26,9 +26,7 @@ window.KAYIT_AYAR = {
     '🔢 Kapı No: {kapi}\n' +
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
-    '💳 Ödeme: {odeme}\n' +
     '\n' +
-    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz: {link}\n' +
     '\n' +
     'İyi yarışlar!\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği',
@@ -45,7 +43,6 @@ window.KAYIT_AYAR = {
     '🏆 Klasman: {klasman}\n' +
     '🚘 Plaka: {plaka}\n' +
     '\n' +
-    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz: {link}\n' +
     '\n' +
     'Kapı numaranız kayıt masasında verilecektir.\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği'
