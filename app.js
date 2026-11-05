@@ -141,6 +141,7 @@
       }
       veri = { kayitlar: r.kayitlar || [], sonKapiNo: r.sonKapiNo || 0, yaris: r.yaris || '',
                yarisTarihi: r.yarisTarihi || '', yarisYeri: r.yarisYeri || '', startSaati: r.startSaati || '',
+               waKayit: r.waKayit || '', waOnay: r.waOnay || '',
                klasmanlar: r.klasmanlar || '', zaman: saat() };
       yaz(D.liste, veri);
       yeniKayitKontrol();
@@ -264,10 +265,14 @@
     return d.length >= 11 ? d : '';
   }
   function waTur(k) { return k.durum === 'Onaylandı' && k.kapiNo ? 'onay' : 'kayit'; }
+  // Mesaj metinleri SlalomX > Yarış Bilgileri > WhatsApp Mesajları'ndan gelir (tablo üzerinden)
+  function waSablon(tur) {
+    return tur === 'onay'
+      ? ((veri.waOnay || '').trim() || C.whatsappMesaji || '')
+      : ((veri.waKayit || '').trim() || C.whatsappKayitMesaji || '');
+  }
   function waMesaj(k) {
-    let sablon = waTur(k) === 'onay'
-      ? ((ayar.waMesaj || '').trim() || C.whatsappMesaji || '')
-      : ((ayar.waKayitMesaj || '').trim() || C.whatsappKayitMesaji || '');
+    let sablon = waSablon(waTur(k));
     const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
     const odeme = k.odeme ? k.odeme + (k.odeme !== 'Ücretsiz' && k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar + ' TL' : '') : '';
     const degerler = {
@@ -289,7 +294,7 @@
   function waGonder(k) {
     const no = waNumara(k.telefon);
     if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
-    if (waTur(k) === 'kayit' && !k.link && /\{link\}/.test((ayar.waKayitMesaj || '') || C.whatsappKayitMesaji || '') &&
+    if (waTur(k) === 'kayit' && !k.link && /\{link\}/.test(waSablon('kayit')) &&
       !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok.\n\nMesaj linksiz gönderilsin mi?')) return;
     const metin = encodeURIComponent(waMesaj(k));
     waGiden[k.id + ':' + waTur(k)] = saat();
@@ -718,8 +723,6 @@
     $('ayUrl').value = ayar.url;
     $('ayAnahtar').value = ayar.anahtar;
     $('ayTutar').value = ayar.tutar;
-    $('ayWaMesaj').value = ayar.waMesaj || C.whatsappMesaji || '';
-    $('ayWaKayitMesaj').value = ayar.waKayitMesaj || C.whatsappKayitMesaji || '';
     $('ayWaHedef').value = ayar.waHedef || 'uygulama';
     $('ayMasa').innerHTML = (C.masalar || ['Masa 1']).map(function (m) {
       return '<option' + (m === ayar.masa ? ' selected' : '') + '>' + esc(m) + '</option>';
@@ -737,8 +740,6 @@
     ayar = {
       url: url, anahtar: $('ayAnahtar').value.trim().toUpperCase(),
       masa: $('ayMasa').value, tutar: $('ayTutar').value.trim(),
-      waMesaj: $('ayWaMesaj').value.trim() === (C.whatsappMesaji || '').trim() ? '' : $('ayWaMesaj').value.trim(),
-      waKayitMesaj: $('ayWaKayitMesaj').value.trim() === (C.whatsappKayitMesaji || '').trim() ? '' : $('ayWaKayitMesaj').value.trim(),
       waHedef: $('ayWaHedef').value
     };
     yaz(D.ayar, ayar);
