@@ -75,6 +75,15 @@
         <label>Varsayılan kayıt ücreti
           <input id="ayTutar" type="number" inputmode="decimal" min="0" placeholder="2000">
         </label>
+        <label>💬 WhatsApp düğmesi hangi mesajı göndersin
+          <select id="ayWaVarsayilan">
+            <option value="otomatik">Otomatik — onaylı + kapı no varsa 3, yoksa 1</option>
+            <option value="kayit">1 · Kayıt alındı</option>
+            <option value="hatirlatma">2 · Hatırlatma</option>
+            <option value="onay">3 · Kayıt tamamlandı</option>
+          </select>
+          <small class="ipucu">Seçim hemen geçerli olur. Düğmeye tek dokunuşta bu mesaj WhatsApp'ta hazır açılır.</small>
+        </label>
         <label>WhatsApp mesajı nerede açılsın (bilgisayarda)
           <select id="ayWaHedef">
             <option value="uygulama">WhatsApp uygulaması (masaüstü)</option>
