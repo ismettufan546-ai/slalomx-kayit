@@ -1,0 +1,311 @@
+
+// ============================================================
+//  OTOMATİK WHATSAPP (WhatsApp Business Cloud API)
+//  Ayarlar > WA_OTOMATIK = EVET olmadıkça HİÇBİR mesaj gönderilmez.
+//  Ayarlar > WA_TEST_NUMARASI doluysa tüm mesajlar SADECE o numaraya gider (test modu).
+//  Gizli bilgiler (erişim anahtarı, numara kimliği) tabloda değil, Proje Özellikleri'nde saklanır:
+//  menü > 'WhatsApp bağlantı bilgilerini gir'.
+//
+//  Tetikleyiciler (5 dakikada bir 'waOtomatikTarama' bakar):
+//   1 KAYIT       : formdan yeni kayıt geldi
+//   2 HATIRLATMA  : yarış tarihinden 1 gün önce WA_HATIRLATMA_SAATI (18:00) — onaylı herkese
+//   3 ONAY        : Kapı Verildi = EVET ve Ödeme Alındı = EVET
+//   4 TESEKKUR    : SlalomX 'Sonuçları kesinleştir' ile Ayarlar > SONUCLAR_KESIN yazar — sonucu olanlara
+//  Her mesaj her sporcuya bir kez gider; kayıt 'WhatsApp Gönderim' sayfasına yazılır.
+// ============================================================
+
+const SAYFA_WA = 'WhatsApp Gönderim';
+const WA_LOG_SUTUNLARI = ['Zaman', 'Tür', 'Yarış', 'Kayıt ID', 'Pilot', 'Telefon', 'Durum', 'Ayrıntı'];
+const WA_API_SURUMU = 'v23.0';
+
+/** Meta'ya onaya gönderilecek şablonlar. {{n}} sırası WA_PARAMETRELER ile aynı olmalı. */
+const WA_SABLONLAR = {
+  KAYIT: {
+    ad: 'slalomx_kayit_alindi',
+    metin: 'Sayın {{1}}, {{2}} yarışı için kaydınız alındı.\n\nTarih: {{3}}\nYer: {{4}}\nStart: {{5}}\n' +
+      'Araç: {{6}}\nKlasman: {{7}}\n\nBilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz: {{8}}\n\n' +
+      'Kapı numaranız kayıt masasında verilecektir.\nKıbrıs Türk Klasik Otomobil Derneği',
+    alanlar: ['pilot', 'yaris', 'tarih', 'yer', 'saat', 'arac', 'klasman', 'link']
+  },
+  HATIRLATMA: {
+    ad: 'slalomx_hatirlatma',
+    metin: 'Sayın {{1}}, {{2}} yarışında görüşmek üzere.\n\nTarih: {{3}}\nYer: {{4}}\nStart: {{5}}\n\n' +
+      'Kapı No: {{6}}\nAraç: {{7}}\nKlasman: {{8}}\nPlaka: {{9}}\n\n' +
+      'Lütfen start saatinden önce kayıt masasına uğrayınız.\nKıbrıs Türk Klasik Otomobil Derneği',
+    alanlar: ['pilot', 'yaris', 'tarih', 'yer', 'saat', 'kapi', 'arac', 'klasman', 'plaka']
+  },
+  ONAY: {
+    ad: 'slalomx_kayit_tamamlandi',
+    metin: 'Sayın {{1}}, {{2}} yarışı kaydınız tamamlandı.\n\nTarih: {{3}}\nYer: {{4}}\nStart: {{5}}\n\n' +
+      'Kapı No: {{6}}\nAraç: {{7}}\nKlasman: {{8}}\nPlaka: {{9}}\nÖdeme: {{10}}\n\n' +
+      'İyi yarışlar.\nKıbrıs Türk Klasik Otomobil Derneği',
+    alanlar: ['pilot', 'yaris', 'tarih', 'yer', 'saat', 'kapi', 'arac', 'klasman', 'plaka', 'odeme']
+  },
+  TESEKKUR: {
+    ad: 'slalomx_yaris_sonrasi',
+    metin: 'Sayın {{1}}, {{2}} yarışına katıldığınız için teşekkür ederiz.\n\nGenel sıra: {{3}}\n' +
+      'Klasman sırası: {{4}}\nÖzel kategori: {{5}}\nHam süre: {{6}}\nToplam süre (cezalar dahil): {{7}}\n\n' +
+      'Sonuçlar kesinleşmiştir.\nKıbrıs Türk Klasik Otomobil Derneği',
+    alanlar: ['pilot', 'yaris', 'sira', 'klasman_sira', 'ozel_sira', 'ham_sure', 'sure']
+  }
+};
+const WA_ORNEK = {
+  pilot: 'AHMET YILMAZ', yaris: 'KLASİK SLALOM', tarih: '15.11.2026', yer: 'LEFKOŞA', saat: '09:30',
+  arac: 'FORD ESCORT (1972)', klasman: 'F', link: 'https://docs.google.com/forms/d/e/ornek/viewform',
+  kapi: '12', plaka: 'AB 123', odeme: '2.000 TL (Nakit)', sira: '4.', klasman_sira: 'F klasmanı 2.',
+  ozel_sira: 'Yok', ham_sure: '1,04,500', sure: '1,09,531'
+};
+
+// ---------------------------------------------------------------- bağlantı bilgileri
+
+function waBaglantiBilgileriniGir() {
+  const ui = SpreadsheetApp.getUi();
+  const p = PropertiesService.getScriptProperties();
+  const sor = function (baslik, anahtar) {
+    const y = ui.prompt('WhatsApp bağlantısı', baslik + (p.getProperty(anahtar) ? '\n(boş bırakılırsa eskisi kalır)' : ''),
+      ui.ButtonSet.OK_CANCEL);
+    if (y.getSelectedButton() !== ui.Button.OK) return false;
+    const v = y.getResponseText().trim();
+    if (v) p.setProperty(anahtar, v);
+    return true;
+  };
+  if (!sor('Erişim anahtarı (Access Token):', 'WA_TOKEN')) return;
+  if (!sor('Telefon numarası kimliği (Phone number ID):', 'WA_PHONE_ID')) return;
+  if (!sor('WhatsApp işletme hesabı kimliği (WhatsApp Business Account ID):', 'WA_WABA_ID')) return;
+  waAyarlariHazirla_();
+  uyar_('✅ Kaydedildi', 'Bağlantı bilgileri kaydedildi. Otomatik gönderim Ayarlar > WA_OTOMATIK = EVET yapılınca başlar.');
+}
+
+function waAyarlariHazirla_() {
+  const mevcut = ayarlariOku_();
+  [['WA_OTOMATIK', 'HAYIR', 'EVET yapılınca WhatsApp mesajları otomatik gider'],
+   ['WA_TEST_NUMARASI', '', 'Doluysa TÜM otomatik mesajlar sadece bu numaraya gider (test)'],
+   ['WA_HATIRLATMA_SAATI', '18:00', 'Hatırlatma: yarıştan 1 gün önce bu saatte'],
+   ['WA_DIL', 'tr', 'Şablon dili (Meta)'],
+   ['SONUCLAR_KESIN', '', 'SlalomX yazar: sonuçları kesinleşen yarış (yarış sonrası mesajı)']
+  ].forEach(function (a) {
+    if (!(a[0] in mevcut)) SpreadsheetApp.getActive().getSheetByName(SAYFA_AYAR).appendRow(a);
+  });
+  const ss = SpreadsheetApp.getActive();
+  if (!ss.getSheetByName(SAYFA_WA)) {
+    const sh = ss.insertSheet(SAYFA_WA);
+    sh.getRange(1, 1, 1, WA_LOG_SUTUNLARI.length).setValues([WA_LOG_SUTUNLARI])
+      .setFontWeight('bold').setBackground('#1f2937').setFontColor('#ffffff');
+    sh.setFrozenRows(1);
+  }
+}
+
+// ---------------------------------------------------------------- gönderim
+
+function waNumara_(tel) {
+  let d = String(tel || '').replace(/\D/g, '');
+  if (d.indexOf('00') === 0) d = d.slice(2);
+  if (d.length === 11 && d[0] === '0') d = '90' + d.slice(1);
+  else if (d.length === 10 && d[0] === '5') d = '90' + d;
+  return d.length >= 11 ? d : '';
+}
+
+/** Şablonlu mesaj gönderir. Döner: {ok, ayrinti} */
+function waSablonGonder_(numara, tur, degerler) {
+  const p = PropertiesService.getScriptProperties();
+  const token = p.getProperty('WA_TOKEN'), phoneId = p.getProperty('WA_PHONE_ID');
+  if (!token || !phoneId) return { ok: false, ayrinti: 'Bağlantı bilgileri girilmemiş' };
+  const s = WA_SABLONLAR[tur];
+  const govde = {
+    messaging_product: 'whatsapp', to: numara, type: 'template',
+    template: {
+      name: s.ad, language: { code: String(ayarOku_('WA_DIL') || 'tr') },
+      components: [{
+        type: 'body',
+        parameters: s.alanlar.map(function (a) {
+          const v = String(degerler[a] === undefined || degerler[a] === null ? '' : degerler[a])
+            .replace(/[\n\t]+/g, ' ').replace(/ {4,}/g, '   ').trim();
+          return { type: 'text', text: v || '-' };
+        })
+      }]
+    }
+  };
+  const y = UrlFetchApp.fetch('https://graph.facebook.com/' + WA_API_SURUMU + '/' + phoneId + '/messages', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(govde)
+  });
+  let j = {};
+  try { j = JSON.parse(y.getContentText()); } catch (e) { j = {}; }
+  if (y.getResponseCode() === 200 && j.messages && j.messages[0]) return { ok: true, ayrinti: j.messages[0].id };
+  return { ok: false, ayrinti: (j.error && (j.error.message + ' (' + j.error.code + ')')) || ('HTTP ' + y.getResponseCode()) };
+}
+
+// ---------------------------------------------------------------- değerler
+
+function waYarisBilgisi_() {
+  return {
+    yaris: String(ayarOku_('YARIS_ADI') || ''), tarih: String(ayarOku_('YARIS_TARIHI') || ''),
+    yer: String(ayarOku_('YARIS_YERI') || ''), saat: String(ayarOku_('START_SAATI') || '')
+  };
+}
+
+function waKlasman_(yil) {
+  const y = Number(yil);
+  if (!y) return '';
+  let bulunan = '';
+  String(ayarOku_('KLASMAN_ARALIKLARI') || '').split(';').forEach(function (p) {
+    const m = p.match(/^\s*([^:]+):\s*(\d{4})\s*-\s*(\d{4})/);
+    if (m && y >= Number(m[2]) && y <= Number(m[3])) bulunan = m[1].trim();
+  });
+  return bulunan;
+}
+
+function waOdeme_(tip, tutar) {
+  tip = String(tip || '');
+  if (!tip) return '';
+  if (tip === 'Ücretsiz') return 'Ücretsiz';
+  const n = Number(String(tutar === undefined ? '' : tutar).replace(',', '.'));
+  return (String(tutar || '') !== '' && !isNaN(n)) ? n.toLocaleString('tr-TR') + ' TL (' + tip + ')' : tip;
+}
+
+function waDegerler_(r, yb, sonuclar) {
+  const yil = r[sut('Üretim Yılı')];
+  const arac = [r[sut('Marka')], r[sut('Model')]].filter(String).join(' ') + (yil ? ' (' + yil + ')' : '');
+  const d = {
+    pilot: String(r[sut('Pilot')] || ''), yaris: yb.yaris, tarih: yb.tarih, yer: yb.yer, saat: yb.saat,
+    arac: arac.trim(), klasman: waKlasman_(yil), link: String(r[sut('Düzeltme Linki')] || ''),
+    kapi: String(r[sut('Kapı No')] || ''), plaka: String(r[sut('Plaka')] || ''),
+    odeme: waOdeme_(r[sut('Ödeme Tipi')], r[sut('Tutar')])
+  };
+  const s = (sonuclar && (sonuclar['k:' + d.kapi] || sonuclar['p:' + buyuk_(d.pilot)])) || {};
+  ['sira', 'klasman_sira', 'ozel_sira', 'ham_sure', 'sure'].forEach(function (a) { d[a] = s[a] || ''; });
+  if (!d.ozel_sira && (d.sira || d.sure)) d.ozel_sira = 'Yok';
+  return d;
+}
+
+// ---------------------------------------------------------------- kayıt (log)
+
+function waLog_() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SAYFA_WA);
+  const v = sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, WA_LOG_SUTUNLARI.length).getValues() : [];
+  const gonderilen = {};
+  v.forEach(function (r) {
+    if (r[6] === 'Gönderildi' || r[6] === 'Atlandı' || r[6] === 'Test') gonderilen[r[1] + '|' + r[2] + '|' + r[3]] = true;
+  });
+  return { sh: sh, gonderilen: gonderilen };
+}
+
+function waLogYaz_(log, tur, yaris, r, telefon, durum, ayrinti) {
+  log.sh.appendRow([tarihMetni_(new Date()), tur, yaris, String(r[sut('Kayıt ID')] || ''), String(r[sut('Pilot')] || ''),
+    telefon, durum, ayrinti || '']);
+  if (durum !== 'Hata') log.gonderilen[tur + '|' + yaris + '|' + r[sut('Kayıt ID')]] = true;
+}
+
+// ---------------------------------------------------------------- tetikleyici taraması
+
+/** 5 dakikada bir çalışır (waOtomatikKurulum kurar). */
+function waOtomatikTarama() {
+  if (String(ayarOku_('WA_OTOMATIK') || '').toUpperCase() !== 'EVET') return;
+  const kilit = LockService.getScriptLock();
+  if (!kilit.tryLock(20000)) return;
+  try {
+    const k = tumKayitlar_();
+    const yb = waYarisBilgisi_();
+    const yarisKimligi = yb.yaris + ' ' + yb.tarih;
+    const log = waLog_();
+    const test = waNumara_(ayarOku_('WA_TEST_NUMARASI'));
+    let sonuclar = {};
+    try { sonuclar = JSON.parse(String(ayarOku_('WA_SONUCLAR') || '{}')) || {}; } catch (e) { sonuclar = {}; }
+    const hatirlatmaZamani = waHatirlatmaZamani_(yb.tarih);
+    const simdi = new Date();
+    const kesin = String(ayarOku_('SONUCLAR_KESIN') || '').trim();
+    let adet = 0;
+
+    k.satirlar.forEach(function (r) {
+      if (adet >= 60) return;                                   // bir taramada en fazla 60 mesaj
+      const durum = r[sut('Durum')];
+      if (durum === DURUM.RED) return;
+      const turler = [];
+      if (r[sut('Kaynak')] === 'Form') turler.push('KAYIT');
+      if (durum === DURUM.ONAY && isaretOku_(r, 'Kapı Verildi') && isaretOku_(r, 'Ödeme Alındı')) turler.push('ONAY');
+      if (durum === DURUM.ONAY && hatirlatmaZamani && simdi >= hatirlatmaZamani &&
+          simdi < new Date(hatirlatmaZamani.getTime() + 30 * 3600 * 1000)) turler.push('HATIRLATMA');
+      if (durum === DURUM.ONAY && kesin && kesin === yarisKimligi) turler.push('TESEKKUR');
+
+      turler.forEach(function (tur) {
+        const yk = tur === 'KAYIT' ? '-' : yarisKimligi;          // kayıt mesajı yarıştan bağımsız, bir kez
+        if (log.gonderilen[tur + '|' + yk + '|' + r[sut('Kayıt ID')]]) return;
+        const d = waDegerler_(r, yb, sonuclar);
+        if (tur === 'TESEKKUR' && !d.sira && !d.sure) return;     // sonucu yok
+        const numara = test || waNumara_(r[sut('Telefon')]);
+        if (!numara) { waLogYaz_(log, tur, yk, r, '', 'Atlandı', 'Geçerli telefon yok'); return; }
+        const s = waSablonGonder_(numara, tur, d);
+        waLogYaz_(log, tur, yk, r, numara, s.ok ? (test ? 'Test' : 'Gönderildi') : 'Hata', s.ayrinti);
+        adet++;
+      });
+    });
+  } finally {
+    kilit.releaseLock();
+  }
+}
+
+function waHatirlatmaZamani_(tarihMetni) {
+  const m = String(tarihMetni || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (!m) return null;
+  const s = String(ayarOku_('WA_HATIRLATMA_SAATI') || '18:00').match(/(\d{1,2})[:.](\d{2})/) || [0, 18, 0];
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]) - 1, Number(s[1]), Number(s[2]));
+}
+
+/** Bir kez: ayarları, kayıt sayfasını ve 5 dakikalık tetikleyiciyi kurar. Mevcut kayıtlara geriye dönük mesaj
+ *  gitmesin diye o anki durum 'Atlandı' olarak işaretlenir. */
+function waOtomatikKurulum() {
+  waAyarlariHazirla_();
+  const k = tumKayitlar_();
+  const yb = waYarisBilgisi_();
+  const yarisKimligi = yb.yaris + ' ' + yb.tarih;
+  const log = waLog_();
+  let atlanan = 0;
+  k.satirlar.forEach(function (r) {
+    if (r[sut('Durum')] === DURUM.RED) return;
+    const turler = [];
+    if (r[sut('Kaynak')] === 'Form') turler.push('KAYIT');
+    if (r[sut('Durum')] === DURUM.ONAY && isaretOku_(r, 'Kapı Verildi') && isaretOku_(r, 'Ödeme Alındı')) turler.push('ONAY');
+    turler.forEach(function (tur) {
+      const yk = tur === 'KAYIT' ? '-' : yarisKimligi;
+      if (log.gonderilen[tur + '|' + yk + '|' + r[sut('Kayıt ID')]]) return;
+      waLogYaz_(log, tur, yk, r, '', 'Atlandı', 'Otomatik gönderim açılmadan önceki kayıt');
+      atlanan++;
+    });
+  });
+  const varMi = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'waOtomatikTarama'; });
+  if (!varMi) ScriptApp.newTrigger('waOtomatikTarama').timeBased().everyMinutes(5).create();
+  uyar_('✅ Otomatik WhatsApp hazır', atlanan + ' mevcut kayıt geriye dönük gönderilmeyecek şekilde işaretlendi.\n\n' +
+    'Gönderim Ayarlar > WA_OTOMATIK = EVET yapılınca başlar. Test için önce WA_TEST_NUMARASI\'na kendi numaranızı yazın.');
+}
+
+/** Şablonları Meta'ya onaya gönderir (bir kez). */
+function waSablonlariOnayaGonder() {
+  const p = PropertiesService.getScriptProperties();
+  const token = p.getProperty('WA_TOKEN'), waba = p.getProperty('WA_WABA_ID');
+  if (!token || !waba) { uyar_('⚠ Eksik', 'Önce menüden WhatsApp bağlantı bilgilerini girin.'); return; }
+  const sonuc = [];
+  Object.keys(WA_SABLONLAR).forEach(function (tur) {
+    const s = WA_SABLONLAR[tur];
+    const govde = {
+      name: s.ad, language: String(ayarOku_('WA_DIL') || 'tr'), category: 'UTILITY',
+      components: [{ type: 'BODY', text: s.metin, example: { body_text: [s.alanlar.map(function (a) { return WA_ORNEK[a]; })] } }]
+    };
+    const y = UrlFetchApp.fetch('https://graph.facebook.com/' + WA_API_SURUMU + '/' + waba + '/message_templates', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(govde)
+    });
+    sonuc.push(s.ad + ': ' + (y.getResponseCode() === 200 ? 'onaya gönderildi' : y.getContentText().slice(0, 200)));
+  });
+  uyar_('Şablonlar', sonuc.join('\n'));
+}
+
+/** Test: WA_TEST_NUMARASI'na 4 şablonun örneğini gönderir. */
+function waTestMesajlari() {
+  const test = waNumara_(ayarOku_('WA_TEST_NUMARASI'));
+  if (!test) { uyar_('⚠ Eksik', 'Ayarlar > WA_TEST_NUMARASI\'na kendi numaranızı yazın.'); return; }
+  const sonuc = Object.keys(WA_SABLONLAR).map(function (tur) {
+    const s = waSablonGonder_(test, tur, WA_ORNEK);
+    return tur + ': ' + (s.ok ? '✅ gönderildi' : '⚠ ' + s.ayrinti);
+  });
+  uyar_('Test mesajları', sonuc.join('\n'));
+}
