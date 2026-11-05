@@ -17,7 +17,7 @@
   function oku(k, v) { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : v; } catch (e) { return v; } }
   function yaz(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* hafıza dolu/kapalı */ } }
 
-  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '', waMesaj: '', waKayitMesaj: '' }, oku(D.ayar, {}));
+  let ayar = Object.assign({ url: '', anahtar: '', masa: (C.masalar || ['Masa 1'])[0], tutar: '', waMesaj: '', waKayitMesaj: '', waHedef: 'uygulama' }, oku(D.ayar, {}));
   let waGiden = oku(D.whatsapp, {});   // kayıt id -> gönderim saati (bu telefondan)
   let veri = oku(D.liste, { kayitlar: [], sonKapiNo: 0, yaris: '', zaman: '' });
   let kuyruk = oku(D.kuyruk, []);
@@ -297,7 +297,7 @@
     // wa.me yönlendirmesi emojileri bozuyor (�) ve her seferinde yeni sayfa açıyordu:
     //  - telefonda WhatsApp uygulaması doğrudan açılır (yeni sayfa yok)
     //  - bilgisayarda hep AYNI WhatsApp Web sekmesi kullanılır
-    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    if ((ayar.waHedef || 'uygulama') === 'uygulama' || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       location.href = 'whatsapp://send?phone=' + no + '&text=' + metin;
     } else {
       const url = 'https://web.whatsapp.com/send?phone=' + no + '&text=' + metin;
@@ -720,6 +720,7 @@
     $('ayTutar').value = ayar.tutar;
     $('ayWaMesaj').value = ayar.waMesaj || C.whatsappMesaji || '';
     $('ayWaKayitMesaj').value = ayar.waKayitMesaj || C.whatsappKayitMesaji || '';
+    $('ayWaHedef').value = ayar.waHedef || 'uygulama';
     $('ayMasa').innerHTML = (C.masalar || ['Masa 1']).map(function (m) {
       return '<option' + (m === ayar.masa ? ' selected' : '') + '>' + esc(m) + '</option>';
     }).join('');
@@ -737,7 +738,8 @@
       url: url, anahtar: $('ayAnahtar').value.trim().toUpperCase(),
       masa: $('ayMasa').value, tutar: $('ayTutar').value.trim(),
       waMesaj: $('ayWaMesaj').value.trim() === (C.whatsappMesaji || '').trim() ? '' : $('ayWaMesaj').value.trim(),
-      waKayitMesaj: $('ayWaKayitMesaj').value.trim() === (C.whatsappKayitMesaji || '').trim() ? '' : $('ayWaKayitMesaj').value.trim()
+      waKayitMesaj: $('ayWaKayitMesaj').value.trim() === (C.whatsappKayitMesaji || '').trim() ? '' : $('ayWaKayitMesaj').value.trim(),
+      waHedef: $('ayWaHedef').value
     };
     yaz(D.ayar, ayar);
     yeniFormuHazirla();
