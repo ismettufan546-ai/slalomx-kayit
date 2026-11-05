@@ -848,6 +848,44 @@
 
   try { $('surumYazi').textContent = 'Uygulama sürümü: ' + (C.surum || '?'); } catch (e) { /* yok */ }
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(function () { /* çevrimdışı önbellek kurulamadı */ });
+    navigator.serviceWorker.register('sw.js').then(function (k) {
+      try { k.update(); } catch (e) { /* önemsiz */ }
+    }).catch(function () { /* çevrimdışı önbellek kurulamadı */ });
   }
+  // ---------------- Otomatik güncelleme ----------------
+  // Sunucudaki sürüm farklıysa uygulama kendini yeniler (açık kalan uygulama da güncellenir)
+  let guncellemeSurerken = false;
+  async function guncellemeKontrol() {
+    if (guncellemeSurerken || !navigator.onLine) return;
+    try {
+      const metin = await (await fetch('config.js?s=' + Date.now(), { cache: 'no-store' })).text();
+      const m = metin.match(/surum:\s*'([^']+)'/);
+      if (m && C.surum && m[1] !== C.surum) {
+        // aynı sürüm için 5 dakikada bir defadan fazla yenileme (sonsuz döngü olmasın)
+        let son = {};
+        try { son = JSON.parse(sessionStorage.getItem('sx_guncelleme') || '{}'); } catch (e) { son = {}; }
+        if (son.hedef === m[1] && Date.now() - son.zaman < 300000) return;
+        try { sessionStorage.setItem('sx_guncelleme', JSON.stringify({ hedef: m[1], zaman: Date.now() })); } catch (e) { /* yok */ }
+        await uygulamayiGuncelle();
+      }
+    } catch (e) { /* çevrimdışı */ }
+  }
+  async function uygulamayiGuncelle() {
+    guncellemeSurerken = true;
+    try {
+      if ('serviceWorker' in navigator) {
+        const kayitlar = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(kayitlar.map(function (k) { return k.unregister(); }));
+      }
+      if (window.caches) {
+        const anahtarlar = await caches.keys();
+        await Promise.all(anahtarlar.map(function (a) { return caches.delete(a); }));
+      }
+    } catch (e) { /* önemsiz */ }
+    location.replace(location.pathname + '?g=' + Date.now());
+  }
+  setTimeout(guncellemeKontrol, 3000);
+  setInterval(guncellemeKontrol, 120000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) guncellemeKontrol(); });
+  try { $('ayGuncelle').addEventListener('click', uygulamayiGuncelle); } catch (e) { /* yok */ }
 })();
