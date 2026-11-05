@@ -4,7 +4,7 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v16',
+  surum: 'v17',
   program: 'SlalomX',
   // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
   odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],

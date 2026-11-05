@@ -291,11 +291,19 @@
     if (!no) { alert('"' + (k.pilot || '') + '" için geçerli telefon numarası yok.'); return; }
     if (waTur(k) === 'kayit' && !k.link && /\{link\}/.test((ayar.waKayitMesaj || '') || C.whatsappKayitMesaji || '') &&
       !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok.\n\nMesaj linksiz gönderilsin mi?')) return;
-    const url = 'https://wa.me/' + no + '?text=' + encodeURIComponent(waMesaj(k));
+    const metin = encodeURIComponent(waMesaj(k));
     waGiden[k.id + ':' + waTur(k)] = saat();
     yaz(D.whatsapp, waGiden);
-    const pencere = window.open(url, '_blank');
-    if (!pencere) location.href = url;
+    // wa.me yönlendirmesi emojileri bozuyor (�) ve her seferinde yeni sayfa açıyordu:
+    //  - telefonda WhatsApp uygulaması doğrudan açılır (yeni sayfa yok)
+    //  - bilgisayarda hep AYNI WhatsApp Web sekmesi kullanılır
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      location.href = 'whatsapp://send?phone=' + no + '&text=' + metin;
+    } else {
+      const url = 'https://web.whatsapp.com/send?phone=' + no + '&text=' + metin;
+      const pencere = window.open(url, 'slalomx_whatsapp');
+      if (pencere) { try { pencere.focus(); } catch (e) { /* önemsiz */ } } else location.href = url;
+    }
     cizOnayli();
   }
   function waDugme(k) {
