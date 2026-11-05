@@ -26,6 +26,9 @@ window.KAYIT_AYAR = {
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
     '\n' +
+    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz:\n' +
+    '{link}\n' +
+    '\n' +
     'İyi yarışlar!\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği',
   // Form doldurulunca (Bekleyenler) gönderilecek mesaj -- {link}: kişiye özel form düzeltme bağlantısı
@@ -40,6 +43,9 @@ window.KAYIT_AYAR = {
     '🚗 Araç: {arac}\n' +
     '🏆 Klasman: {klasman}\n' +
     '🚘 Plaka: {plaka}\n' +
+    '\n' +
+    '✏ Bilgilerinizde hata varsa size özel bağlantıdan düzeltebilirsiniz:\n' +
+    '{link}\n' +
     '\n' +
     'Kapı numaranız kayıt masasında verilecektir.\n' +
     'Kıbrıs Türk Klasik Otomobil Derneği'

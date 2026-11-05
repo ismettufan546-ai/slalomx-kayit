@@ -265,7 +265,7 @@
   }
   function waTur(k) { return k.durum === 'Onaylandı' && k.kapiNo ? 'onay' : 'kayit'; }
   function waMesaj(k) {
-    const sablon = waTur(k) === 'onay'
+    let sablon = waTur(k) === 'onay'
       ? ((ayar.waMesaj || '').trim() || C.whatsappMesaji || '')
       : ((ayar.waKayitMesaj || '').trim() || C.whatsappKayitMesaji || '');
     const arac = [k.marka, k.model].filter(Boolean).join(' ') + (k.yil ? ' (' + k.yil + ')' : '');
@@ -276,12 +276,15 @@
       tarih: veri.yarisTarihi || '', yer: veri.yarisYeri || '', saat: veri.startSaati || ''
     };
     // Değeri boş olan alanın satırı tamamen çıkarılır
+    if (!degerler.link) sablon = sablon.replace(/^.*\n?.*\{link\}.*(\n|$)/m, function (m) {
+      return /:\s*\n/.test(m) ? '' : m;     // 'düzeltebilirsiniz:' + link satırı birlikte çıkar
+    });
     return sablon.split('\n').filter(function (satir) {
       const m = satir.match(/\{(\w+)\}/g) || [];
       return m.every(function (a) { return degerler[a.slice(1, -1)] !== ''; });
     }).join('\n').replace(/\{(\w+)\}/g, function (_t, ad) {
       return degerler[ad] !== undefined ? degerler[ad] : '';
-    });
+    }).replace(/\n{3,}/g, '\n\n');
   }
   function waGonder(k) {
     const no = waNumara(k.telefon);
