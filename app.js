@@ -289,7 +289,13 @@
   function waSunucu(k) {
     let s = {};
     try { s = (JSON.parse(veri.waSonuclar || '{}') || {})._wa || {}; } catch (e) { s = {}; }
-    return s['p:' + String(k.pilot || '').trim().replace(/\s+/g, ' ').toUpperCase()] || {};
+    const p = s['p:' + String(k.pilot || '').trim().replace(/\s+/g, ' ').toUpperCase()] || {};
+    const kk = (k.kapiNo !== undefined && k.kapiNo !== '') ? s['k:' + k.kapiNo] : null;
+    if (!kk) return p;
+    // Aynı isimle iki araç olabilir: kapı numarasına göre gidenler esas, formdaki mesajlar isimden
+    const r = {};
+    ['kayit', 'tekrar', 'guncel', 'yil'].forEach(function (t) { if (p[t]) r[t] = p[t]; });
+    return Object.assign(r, kk);
   }
   function waYerel(k, tur) { return waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '') || ''; }
   function waGidenZaman(k, tur) { return waYerel(k, tur) || waSunucu(k)[tur] || ''; }
