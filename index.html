@@ -75,7 +75,8 @@
         <label>Varsayılan kayıt ücreti
           <input id="ayTutar" type="number" inputmode="decimal" min="0" placeholder="2000">
         </label>
-        <label>💬 WhatsApp düğmesi hangi mesajı göndersin
+        <!-- Mesajlar artık SlalomX'ten otomatik gidiyor; telefondan gönderme kaldırıldı (ayarlar gizli) -->
+        <label class="gizli">💬 WhatsApp düğmesi hangi mesajı göndersin
           <select id="ayWaVarsayilan">
             <option value="otomatik">Otomatik — onaylı + kapı no varsa 3, yoksa 1</option>
             <option value="kayit">1 · Kayıt alındı</option>
@@ -85,7 +86,7 @@
           </select>
           <small class="ipucu">Seçim hemen geçerli olur. Düğmeye tek dokunuşta bu mesaj WhatsApp'ta hazır açılır.</small>
         </label>
-        <label>WhatsApp mesajı nerede açılsın (bilgisayarda)
+        <label class="gizli">WhatsApp mesajı nerede açılsın (bilgisayarda)
           <select id="ayWaHedef">
             <option value="uygulama">WhatsApp uygulaması (masaüstü)</option>
             <option value="web">WhatsApp Web (tarayıcı)</option>
@@ -93,7 +94,7 @@
         </label>
         <div class="wa-aktif">
           <div class="wa-aktif-baslik">💬 Kullanılan WhatsApp mesajları</div>
-          <p class="ipucu">Metinler SlalomX &gt; Yarış Bilgileri &gt; WhatsApp Mesajları'ndan yönetilir; burada kendiliğinden güncellenir.</p>
+          <p class="ipucu">Mesajlar SlalomX'ten otomatik gider (telefondan gönderilmez). Metinler SlalomX &gt; Yarış Bilgileri &gt; WhatsApp Mesajları'ndan yönetilir; burada kendiliğinden güncellenir. Kartlardaki 💬 düğmesine dokununca o sporcuya giden tüm mesajlar listelenir.</p>
           <div class="wa-aktif-ad">1 · Kayıt alındı <span id="waDurumKayit" class="wa-rozet"></span></div>
           <pre id="waMetinKayit" class="wa-metin"></pre>
           <div class="wa-aktif-ad">2 · Hatırlatma <span id="waDurumHatirlatma" class="wa-rozet"></span></div>
@@ -131,14 +132,14 @@
     <div class="kapi-no" id="kapiNoBuyuk">–</div>
     <div class="kapi-pilot" id="kapiPilot"></div>
     <div class="kapi-alt" id="kapiAlt"></div>
-    <button id="kapiWa" class="btn wa buyuk">💬 WhatsApp'tan Bildir</button>
+    <button id="kapiWa" class="btn wa buyuk gizli">💬 WhatsApp</button>
     <button id="kapiTamam" class="btn birincil buyuk">Tamam</button>
   </div>
 
   <!-- WHATSAPP MESAJ SEÇİMİ -->
   <div id="waSecim" class="wa-secim gizli">
     <div class="wa-secim-kutu">
-      <div class="wa-secim-baslik">💬 Hangi mesaj gönderilsin?</div>
+      <div class="wa-secim-baslik" id="waSecimBaslik">💬 Giden WhatsApp mesajları</div>
       <div class="wa-secim-pilot" id="waSecimPilot"></div>
       <div id="waSecimTurler" class="wa-secim-turler"></div>
       <pre id="waSecimOnizleme" class="wa-metin"></pre>

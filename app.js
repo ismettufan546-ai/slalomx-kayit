@@ -293,9 +293,18 @@
     const kk = (k.kapiNo !== undefined && k.kapiNo !== '') ? s['k:' + k.kapiNo] : null;
     if (!kk) return p;
     // Aynı isimle iki araç olabilir: kapı numarasına göre gidenler esas, formdaki mesajlar isimden
-    const r = {};
-    ['kayit', 'tekrar', 'guncel', 'yil'].forEach(function (t) { if (p[t]) r[t] = p[t]; });
-    return Object.assign(r, kk);
+    const r = {}, formTur = ['kayit', 'tekrar', 'guncel', 'yil'];
+    formTur.forEach(function (t) { if (p[t]) r[t] = p[t]; });
+    Object.assign(r, kk);
+    // tam liste: kapı numarasına gidenler + isimle (form aşamasında) gidenler
+    if (p._l || kk._l) {
+      const l = (kk._l || []).slice();
+      (p._l || []).forEach(function (x) {
+        if (formTur.indexOf(x[0]) >= 0 && !l.some(function (y) { return y[0] === x[0] && y[1] === x[1]; })) l.push(x);
+      });
+      r._l = l;
+    }
+    return r;
   }
   function waYerel(k, tur) { return waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '') || ''; }
   function waGidenZaman(k, tur) { return waYerel(k, tur) || waSunucu(k)[tur] || ''; }
@@ -306,6 +315,8 @@
   }
   // En son giden mesaj (bu telefondan elle ya da SlalomX'ten otomatik): {tur, zaman, oto}
   function waSonGiden(k) {
+    const l = waTumGidenler(k);
+    if (l.length) return { tur: l[0].tur, zaman: l[0].zaman, oto: l[0].oto, hata: l[0].durum === 'hata' };
     let son = null;
     const sun = waSunucu(k);
     WA_TUM_ADLAR.forEach(function (t) {
@@ -397,15 +408,43 @@
     }
     cizOnayli();
   }
+  // Kart düğmesi artık mesaj GÖNDERMEZ (mesajlar SlalomX'ten otomatik gider): son giden mesajı gösterir,
+  // dokununca o kayda giden tüm mesajlar listelenir.
   function waDugme(k) {
     if (!k.telefon) return '';
-    const tur = waTur(k), giden = waGidenZaman(k, tur);
     const son = waSonGiden(k);
-    return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 WhatsApp: ' +
-      esc(waTurAdi(tur)) + (giden ? ' · gönderildi ' + esc(giden) : '') +
-      (son ? '<small class="wa-son">Son giden: ' + esc(waTurAdi(son.tur)) + ' · ' + esc(son.zaman) +
-        (son.oto ? ' (otomatik)' : '') + '</small>' : '<small class="wa-son">Henüz mesaj gitmedi</small>') +
-      '</button>';
+    return '<button class="btn wa-bilgi' + (son ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
+      (son ? 'Son mesaj: ' + esc(waTurAdi(son.tur)) + ' · ' + esc(son.zaman) + (son.oto ? '' : ' (bu telefondan)')
+        : 'Henüz mesaj gitmedi') +
+      (son && son.hata ? ' <span class="wa-hata">✖ gönderilemedi</span>' : '') + '</button>';
+  }
+  // O kayda giden tüm mesajlar (SlalomX'in listesi + eskiden bu telefondan açılanlar), en yeni üstte
+  function waTumGidenler(k) {
+    const sun = waSunucu(k), liste = [];
+    (sun._l || []).forEach(function (x) { liste.push({ tur: x[0], zaman: x[1], durum: x[2] || 'gitti', hata: x[3] || '', oto: true }); });
+    if (!sun._l) WA_TUM_ADLAR.forEach(function (t) { if (sun[t[0]]) liste.push({ tur: t[0], zaman: sun[t[0]], durum: 'gitti', oto: true }); });
+    WA_TUM_ADLAR.forEach(function (t) { const z = waYerel(k, t[0]); if (z) liste.push({ tur: t[0], zaman: z, durum: 'gitti', oto: false }); });
+    liste.sort(function (a, b) { return waSiraAnahtari(b.zaman) > waSiraAnahtari(a.zaman) ? 1 : -1; });
+    return liste;
+  }
+  function waListe(k) {
+    const p = $('waSecim');
+    $('waSecimBaslik').textContent = '💬 Giden WhatsApp mesajları';
+    $('waSecimPilot').textContent = (k.kapiNo ? k.kapiNo + ' · ' : '') + (k.pilot || '') + (k.telefon ? '  ·  ' + k.telefon : '');
+    const l = waTumGidenler(k);
+    $('waSecimTurler').innerHTML = l.length ? l.map(function (x) {
+      const d = x.durum === 'gitti' ? '✔' : (x.durum === 'hata' ? '✖' : '⏳');
+      return '<div class="wa-liste-satir ' + esc(x.durum) + '"><span>' + d + ' ' + esc(waTurAdi(x.tur)) + '</span>' +
+        '<small>' + esc(x.zaman) + (x.oto ? '' : ' · bu telefondan') +
+        (x.durum === 'hata' ? ' · gönderilemedi' + (x.hata ? ': ' + esc(x.hata) : '') : '') +
+        (x.durum === 'bekliyor' ? ' · sırada' : '') + '</small></div>';
+    }).join('') : '<div class="ipucu">Bu kayda henüz mesaj gitmedi.</div>';
+    $('waSecimTurler').onclick = null;
+    $('waSecimOnizleme').classList.add('gizli');
+    $('waSecimGonder').classList.add('gizli');
+    $('waSecimIptal').textContent = 'Kapat';
+    $('waSecimIptal').onclick = function () { p.classList.add('gizli'); };
+    p.classList.remove('gizli');
   }
 
   // ---------------- Büyük kapı numarası ----------------
@@ -417,8 +456,7 @@
     const s = kapiSirasi.shift();
     if (!s) { $('kapiEkrani').classList.add('gizli'); return; }
     kapiEkraniKayit = s.kayit;
-    $('kapiWa').classList.toggle('gizli', !waNumara(s.kayit.telefon));
-    $('kapiWa').textContent = '💬 WhatsApp: ' + waTurAdi(waTur(s.kayit));
+    $('kapiWa').classList.add('gizli');
     $('kapiNoBuyuk').textContent = s.kayit.kapiNo;
     $('kapiPilot').textContent = s.kayit.pilot || '';
     $('kapiAlt').textContent = [s.kayit.marka, s.kayit.model, s.kayit.yil].filter(Boolean).join(' · ') +
@@ -730,7 +768,7 @@
     const wa = e.target.closest('[data-wa]');
     if (wa) {
       const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
-      if (k) { waGonder(k); cizBekleyen(); }
+      if (k) waListe(k);
       return;
     }
     const onay = e.target.closest('[data-onayla]');
@@ -742,7 +780,7 @@
     const wa = e.target.closest('[data-wa]');
     if (wa) {
       const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
-      if (k) waGonder(k);
+      if (k) waListe(k);
       return;
     }
     const isaret = e.target.closest('[data-isaret]');
@@ -798,13 +836,7 @@
   $('araBekleyen').addEventListener('input', cizBekleyen);
   $('araOnayli').addEventListener('input', cizOnayli);
   $('kapiTamam').addEventListener('click', sonrakiKapi);
-  $('kapiWa').addEventListener('click', function () {
-    if (!kapiEkraniKayit) return;
-    // Kapı ekranındaki kayıt, listedeki güncel hâliyle (ödeme vb.) gönderilir
-    const k = veri.kayitlar.find(function (x) { return x.id === kapiEkraniKayit.id; }) || kapiEkraniKayit;
-    waGonder(k);
-    $('kapiWa').textContent = '💬 ' + waTurAdi(waTur(k)) + ' · gönderildi';
-  });
+  // Kapı ekranındaki WhatsApp düğmesi kaldırıldı (mesajlar SlalomX'ten otomatik gider)
 
   // ---------------- Ayarlar ----------------
   function waAktifGoster() {
