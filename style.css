@@ -194,3 +194,6 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 .btn.wa-tur small { color: #86efac; font-weight: 700; white-space: nowrap; }
 .wa-secim-alt { display: flex; gap: 10px; margin-top: 12px; }
 .wa-secim-alt .btn { flex: 1; }
+
+.isaret.kilitli { opacity: .55; border-style: dashed; }
+.isaret.kilitli small { display: block; }

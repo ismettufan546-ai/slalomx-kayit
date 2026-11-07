@@ -595,15 +595,32 @@
     const bekleyen = kuyruk.filter(function (i) { return i.kayitId === k.id && i.islem === 'isaretle' && i.alan === alan; }).pop();
     return { acik: bekleyen ? !!bekleyen.deger : !!(alan === 'kapi' ? k.kapiVerildi : k.odemeAlindi), bekliyor: !!bekleyen };
   }
+  // Kapı No (sticker) yarıştan 1 gün önce 18:00'den önce verilmez — numaralar o zamana kadar yıla göre değişebilir.
+  function kapiAcilis() {
+    const m = String(veri.yarisTarihi || '').match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/) ||
+              String(veri.yarisTarihi || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    const d = m[1].length === 4 ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[3], +m[2] - 1, +m[1]);
+    d.setDate(d.getDate() - 1);
+    d.setHours(18, 0, 0, 0);
+    return d;
+  }
+  function kapiKilitli() { const d = kapiAcilis(); return !!d && new Date() < d; }
+  function kapiKilitMetni() {
+    const d = kapiAcilis();
+    return d ? d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }) + ' 18:00' : '';
+  }
   function isaretlerHtml(k) {
     const kapi = isaretDurumu(k, 'kapi'), odeme = isaretDurumu(k, 'odeme');
+    const kilitli = kapiKilitli() && !kapi.acik;
     const tus = function (alan, d, etiket, ek) {
       return '<button class="isaret' + (d.acik ? ' acik' : '') + '" data-isaret="' + alan + '" data-id="' + esc(k.id) + '">' +
         '<span class="kutu">' + (d.acik ? '✓' : '') + '</span>' + etiket + (ek ? '<small>' + esc(ek) + '</small>' : '') +
         (d.bekliyor ? ' ⏳' : '') + '</button>';
     };
     return '<div class="isaretler">' +
-      tus('kapi', kapi, '🎫 Kapı No', '') +
+      (kilitli ? '<button class="isaret kilitli" data-kapikilit="1"><span class="kutu">🔒</span>🎫 Kapı No' +
+        '<small>' + esc(kapiKilitMetni()) + '\'den sonra</small></button>' : tus('kapi', kapi, '🎫 Kapı No', '')) +
       tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + (k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar : '') : '') + '</div>';
   }
 
@@ -784,6 +801,11 @@
     if (wa) {
       const k = veri.kayitlar.find(function (x) { return x.id === wa.getAttribute('data-wa'); });
       if (k) waListe(k);
+      return;
+    }
+    if (e.target.closest('[data-kapikilit]')) {
+      alert('🔒 Kapı numaraları ' + kapiKilitMetni() + '\'den sonra verilir.\n\n' +
+            'Numaralar o zamana kadar yıla göre yeniden dağıtılabilir. Ödeme şimdi alınabilir.');
       return;
     }
     const isaret = e.target.closest('[data-isaret]');
