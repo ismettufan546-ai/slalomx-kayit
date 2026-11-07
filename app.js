@@ -548,6 +548,9 @@
 
   function cizOnayli() {
     const ara = $('araOnayli').value;
+    const redSayi = veri.kayitlar.filter(function (k) { return k.durum === 'Reddedildi' && !k.slalomx; }).length;
+    $('redSil').classList.toggle('gizli', filtre !== 'red' || !redSayi);
+    $('redSil').textContent = '🗑 Reddedilenlerin hepsini sil (' + redSayi + ')';
     const durum = filtre === 'red' ? 'Reddedildi' : 'Onaylandı';
     let liste = veri.kayitlar.filter(function (k) { return k.durum === durum; });
     if (filtre === 'benim') liste = liste.filter(function (k) { return k.masa === ayar.masa; });
@@ -835,6 +838,25 @@
   $('uyariBandi').addEventListener('click', function () { sekmeAc('bekleyen'); });
   $('araBekleyen').addEventListener('input', cizBekleyen);
   $('araOnayli').addEventListener('input', cizOnayli);
+  // Reddedilen kayıtları tablodan (ve formdaki yanıtlarını) tamamen siler — internet gerekir
+  $('redSil').addEventListener('click', async function () {
+    const n = veri.kayitlar.filter(function (k) { return k.durum === 'Reddedildi' && !k.slalomx; }).length;
+    if (!n) return;
+    if (!confirm(n + ' reddedilmiş kayıt TAMAMEN silinecek (formdaki yanıtları ve düzeltme linkleri de).\n\n' +
+                 'Geri alınamaz. Devam edilsin mi?')) return;
+    const b = this;
+    b.disabled = true;
+    b.textContent = '⏳ Siliniyor…';
+    try {
+      const r = await api({ islem: 'reddedilenleriSil' });
+      if (r.ok) bildir('🗑 ' + (r.mesaj || 'Silindi'), 'tamam');
+      else bildir('⚠ ' + (r.hata || 'Silinemedi'), 'hata');
+    } catch (e) {
+      bildir('📶 İnternet yok — silme için bağlantı gerekli.', 'hata');
+    }
+    b.disabled = false;
+    senkron();
+  });
   $('kapiTamam').addEventListener('click', sonrakiKapi);
   // Kapı ekranındaki WhatsApp düğmesi kaldırıldı (mesajlar SlalomX'ten otomatik gider)
 
