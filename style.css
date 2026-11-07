@@ -156,6 +156,7 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 
 .btn.wa { background: #25d366; color: #052e16; }
 .btn.wa.gitti { background: transparent; color: #25d366; border: 1px solid #25d366; font-size: 14px; }
+.btn.wa .wa-son { display: block; font-size: 12px; font-weight: 600; opacity: .85; margin-top: 3px; }
 .kapi-ekrani .btn.wa { margin-bottom: 12px; }
 .form textarea { padding: 12px; border-radius: 10px; border: 1px solid var(--cizgi); background: var(--zemin);
   color: var(--yazi); font-size: 15px; font-family: inherit; width: 100%; resize: vertical; }

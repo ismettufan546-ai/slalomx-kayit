@@ -281,8 +281,38 @@
     if (v !== 'otomatik') return v;                      // Ayarlar'da seçilen mesaj
     return k.durum === 'Onaylandı' && k.kapiNo ? 'onay' : 'kayit';
   }
-  function waTurAdi(tur) { const t = WA_TURLER.find(function (x) { return x[0] === tur; }); return t ? t[1] : tur; }
-  function waGidenZaman(k, tur) { return waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '') || ''; }
+  // Otomatik (SlalomX'ten giden) mesajlar: telefonda elle gönderilemez ama 'son giden' olarak görünür
+  const WA_TUM_ADLAR = WA_TURLER.concat([['tekrar', '5 · Tekrar kayıt'], ['guncel', '6 · Bilgi güncellendi'],
+    ['yil', '7 · Yıl hatalı']]);
+  function waTurAdi(tur) { const t = WA_TUM_ADLAR.find(function (x) { return x[0] === tur; }); return t ? t[1] : tur; }
+  // SlalomX'in otomatik gönderdikleri (WA_SONUCLAR._wa): {"p:PİLOT": {"kayit": "07.11 00:53", ...}}
+  function waSunucu(k) {
+    let s = {};
+    try { s = (JSON.parse(veri.waSonuclar || '{}') || {})._wa || {}; } catch (e) { s = {}; }
+    return s['p:' + String(k.pilot || '').trim().replace(/\s+/g, ' ').toUpperCase()] || {};
+  }
+  function waYerel(k, tur) { return waGiden[k.id + ':' + tur] || (tur === 'onay' ? waGiden[k.id] : '') || ''; }
+  function waGidenZaman(k, tur) { return waYerel(k, tur) || waSunucu(k)[tur] || ''; }
+  // 'gg.aa ss:dd' -> sıralanabilir anahtar (eski kayıtlarda sadece saat vardı: en eski sayılır)
+  function waSiraAnahtari(z) {
+    const m = String(z || '').match(/^(\d\d)\.(\d\d) (\d\d:\d\d)$/);
+    return m ? m[2] + m[1] + m[3] : '0000' + String(z || '');
+  }
+  // En son giden mesaj (bu telefondan elle ya da SlalomX'ten otomatik): {tur, zaman, oto}
+  function waSonGiden(k) {
+    let son = null;
+    const sun = waSunucu(k);
+    WA_TUM_ADLAR.forEach(function (t) {
+      [[waYerel(k, t[0]), false], [sun[t[0]], true]].forEach(function (a) {
+        if (a[0] && (!son || waSiraAnahtari(a[0]) > waSiraAnahtari(son.zaman))) son = { tur: t[0], zaman: a[0], oto: a[1] };
+      });
+    });
+    return son;
+  }
+  function waZaman() {
+    const d = new Date(), iki = function (n) { return String(n).padStart(2, '0'); };
+    return iki(d.getDate()) + '.' + iki(d.getMonth() + 1) + ' ' + iki(d.getHours()) + ':' + iki(d.getMinutes());
+  }
   // Mesaj metinleri SlalomX > Yarış Bilgileri > WhatsApp Mesajları'ndan gelir (tablo üzerinden)
   function waSablon(tur) {
     if (tur === 'onay') return (veri.waOnay || '').trim() || C.whatsappMesaji || '';
@@ -347,7 +377,7 @@
     if (!k.link && /\{link\}/.test(waSablon(tur)) &&
       !confirm('"' + (k.pilot || '') + '" için düzeltme linki henüz yok.\n\nMesaj linksiz gönderilsin mi?')) return;
     const metin = encodeURIComponent(waMesaj(k, tur));
-    waGiden[k.id + ':' + tur] = saat();
+    waGiden[k.id + ':' + tur] = waZaman();
     yaz(D.whatsapp, waGiden);
     // wa.me yönlendirmesi emojileri bozuyor (�) ve her seferinde yeni sayfa açıyordu:
     //  - telefonda WhatsApp uygulaması doğrudan açılır (yeni sayfa yok)
@@ -363,12 +393,13 @@
   }
   function waDugme(k) {
     if (!k.telefon) return '';
-    const gidenler = WA_TURLER.filter(function (t) { return waGidenZaman(k, t[0]); })
-      .map(function (t) { return t[1].split(' ')[0]; });
     const tur = waTur(k), giden = waGidenZaman(k, tur);
+    const son = waSonGiden(k);
     return '<button class="btn wa' + (giden ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 WhatsApp: ' +
       esc(waTurAdi(tur)) + (giden ? ' · gönderildi ' + esc(giden) : '') +
-      (gidenler.length && !giden ? ' · gönderilen: ' + esc(gidenler.join(', ')) : '') + '</button>';
+      (son ? '<small class="wa-son">Son giden: ' + esc(waTurAdi(son.tur)) + ' · ' + esc(son.zaman) +
+        (son.oto ? ' (otomatik)' : '') + '</small>' : '<small class="wa-son">Henüz mesaj gitmedi</small>') +
+      '</button>';
   }
 
   // ---------------- Büyük kapı numarası ----------------
