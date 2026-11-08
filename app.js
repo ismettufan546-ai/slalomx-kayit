@@ -283,7 +283,7 @@
   }
   // Otomatik (SlalomX'ten giden) mesajlar: telefonda elle gönderilemez ama 'son giden' olarak görünür
   const WA_TUM_ADLAR = WA_TURLER.concat([['tekrar', '5 · Tekrar kayıt'], ['guncel', '6 · Bilgi güncellendi'],
-    ['yil', '7 · Yıl hatalı']]);
+    ['yil', '7 · Yıl hatalı'], ['start', '8 · Start saati']]);
   function waTurAdi(tur) { const t = WA_TUM_ADLAR.find(function (x) { return x[0] === tur; }); return t ? t[1] : tur; }
   // SlalomX'in otomatik gönderdikleri (WA_SONUCLAR._wa): {"p:PİLOT": {"kayit": "07.11 00:53", ...}}
   function waSunucu(k) {
