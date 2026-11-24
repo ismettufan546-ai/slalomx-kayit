@@ -197,3 +197,20 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 
 .isaret.kilitli { opacity: .55; border-style: dashed; }
 .isaret.kilitli small { display: block; }
+
+/* Bölümler: SLALOMX / RALLIX (24.11.2026, KKDSOD kayıt masası gibi) */
+.modlar { display: flex; gap: 10px; padding: 10px 12px; background: #07090f; border-bottom: 1px solid var(--cizgi); }
+.modlar button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 6px;
+  border-radius: 12px; border: 2px solid var(--cizgi); background: linear-gradient(180deg, #1b2235, #0f1422);
+  color: #e8edf7; font-size: 22px; font-weight: 900; font-style: italic; letter-spacing: .5px; cursor: pointer;
+  transform: skewX(-8deg); }
+.modlar button > * { transform: skewX(8deg); }
+.modlar button b { color: var(--vurgu); margin-left: -6px; }
+.modlar .mod-ikon { font-style: normal; font-size: 20px; }
+.modlar button.aktif.mod-slalom { border-color: #ef4444; background: linear-gradient(180deg, #b91c1c, #5b0f0f);
+  box-shadow: 0 0 14px rgba(239, 68, 68, .55); }
+.modlar button.aktif.mod-ralli { border-color: #f5b400; background: linear-gradient(180deg, #a16207, #4a2d05);
+  box-shadow: 0 0 14px rgba(245, 180, 0, .55); }
+.modlar button:not(.aktif) { opacity: .75; }
+.kart-copilot { margin-top: 3px; font-size: 14px; color: var(--soluk); font-weight: 700; }
+body.mod-ralli .kapi { background: #f5b400; }

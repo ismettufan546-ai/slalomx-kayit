@@ -4,7 +4,9 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v29',
+  surum: 'v30',
+  ralliUygulamaAdi: 'RalliX Kayıt',
+  ralliTutar: 0,           // Ayarlar'da ralli ücreti girilmemişse (0 = varsayılanTutar kullanılır)
   program: 'SlalomX',
   // Apps Script'teki ODEME_TIPLERI ile birebir aynı olmalı
   odemeTipleri: ['Nakit', 'Kart', 'Havale', 'Ücretsiz'],

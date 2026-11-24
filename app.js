@@ -7,9 +7,14 @@
   'use strict';
 
   const C = window.KAYIT_AYAR || {};
-  const ON = C.depoOnEki || 'sx_';
+  const ON0 = C.depoOnEki || 'sx_';
+  // 24.11.2026: iki bölüm — SLALOMX (form + masa) ve RALLIX (yalnız masada kayıt, pilot + co-pilot).
+  // Bölüm seçimi telefonda saklanır; her bölümün listesi/kuyruğu ayrı tutulur, ayarlar (adres, anahtar, masa) ortak.
+  const MOD = (function () { try { return localStorage.getItem(ON0 + 'mod') === 'ralli' ? 'ralli' : 'slalom'; } catch (e) { return 'slalom'; } })();
+  const RALLI = MOD === 'ralli';
+  const ON = ON0 + (RALLI ? 'r_' : '');
   const D = {
-    ayar: ON + 'ayar', liste: ON + 'liste', kuyruk: ON + 'kuyruk',
+    ayar: ON0 + 'ayar', liste: ON + 'liste', kuyruk: ON + 'kuyruk',
     gorulen: ON + 'gorulen', hatalar: ON + 'hatalar', whatsapp: ON + 'whatsapp'
   };
 
@@ -24,7 +29,7 @@
   let hatalar = oku(D.hatalar, []);
   let gorulen = new Set(oku(D.gorulen, []));
   let ilkSenkron = gorulen.size === 0;
-  let sekme = 'bekleyen';
+  let sekme = RALLI ? 'onayli' : 'bekleyen';
   let filtre = 'benim';
   let senkronCalisiyor = false;
   let tekrarGerek = false;          // senkron sırasında yeni işlem eklendiyse
@@ -99,7 +104,7 @@
       const yanit = await fetch(ayar.url, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(Object.assign({ anahtar: ayar.anahtar }, govde)),
+        body: JSON.stringify(Object.assign({ anahtar: ayar.anahtar, mod: MOD }, govde)),
         redirect: 'follow',
         signal: kontrol.signal
       });
@@ -162,7 +167,7 @@
     const yeniler = bekleyenler.filter(function (k) { return !gorulen.has(k.id); });
     veri.kayitlar.forEach(function (k) { gorulen.add(k.id); });
     yaz(D.gorulen, Array.from(gorulen).slice(-2000));
-    if (!ilkSenkron && yeniler.length) {
+    if (!ilkSenkron && yeniler.length && !RALLI) {
       const bant = $('uyariBandi');
       bant.textContent = '🔔 ' + (yeniler.length === 1
         ? 'Yeni kayıt bekliyor: ' + yeniler[0].pilot
@@ -411,7 +416,7 @@
   // Kart düğmesi artık mesaj GÖNDERMEZ (mesajlar SlalomX'ten otomatik gider): son giden mesajı gösterir,
   // dokununca o kayda giden tüm mesajlar listelenir.
   function waDugme(k) {
-    if (!k.telefon) return '';
+    if (RALLI || !k.telefon) return '';
     const son = waSonGiden(k);
     return '<button class="btn wa-bilgi' + (son ? ' gitti' : '') + '" data-wa="' + esc(k.id) + '">💬 ' +
       (son ? 'Son mesaj: ' + esc(waTurAdi(son.tur)) + ' · ' + esc(son.zaman) + (son.oto ? '' : ' (bu telefondan)')
@@ -473,7 +478,7 @@
   function aramaUyar(k, metin) {
     if (!metin) return true;
     const n = normal(metin);
-    return [k.pilot, k.marka, k.model, k.plaka, k.telefon, k.kapiNo, k.yil].some(function (x) {
+    return [k.pilot, k.copilot, k.marka, k.model, k.plaka, k.telefon, k.kapiNo, k.yil].some(function (x) {
       return normal(x).indexOf(n) >= 0;
     });
   }
@@ -499,8 +504,8 @@
     return ham;
   }
   function ucret() {
-    const t = String(ayar.tutar || '').replace(',', '.').trim();
-    return t !== '' && !isNaN(Number(t)) ? t : String(C.varsayilanTutar || 0);
+    const t = String((RALLI ? ayar.tutarRalli : ayar.tutar) || '').replace(',', '.').trim();
+    return t !== '' && !isNaN(Number(t)) ? t : String((RALLI ? C.ralliTutar : 0) || C.varsayilanTutar || 0);
   }
 
   function kartAlt(k) {
@@ -511,6 +516,7 @@
       (klasmanBul(k.yil) ? ' <span class="klasman">' + esc(klasmanBul(k.yil)) + '</span>' : '') +
       (k.kadin ? ' <span class="etiket">KADIN</span>' : '') +
       (k.genc ? ' <span class="etiket genc">GENÇ</span>' : '') + '</div>' +
+      (k.copilot ? '<div class="kart-copilot">🧭 Co-Pilot: ' + esc(k.copilot) + '</div>' : '') +
       (k.telefon ? '<div class="kart-tel">📞 ' + esc(telBicim(k.telefon)) + '</div>' : '') +
       uyariNotu(k.not);
   }
@@ -563,6 +569,7 @@
       const a = i.alanlar || {};
       return '<div class="kart soluk"><div class="kart-ust"><div class="kapi kucuk">⏳</div><div>' +
         '<div class="kart-pilot">' + esc(a.pilot) + '</div>' +
+        (a.copilot ? '<div class="kart-copilot">🧭 Co-Pilot: ' + esc(a.copilot) + '</div>' : '') +
         '<div class="kart-arac">' + esc([a.marka, a.model, a.yil].filter(Boolean).join(' · ')) + '</div>' +
         '<div class="durum-satir sari">Numara bağlantı gelince verilecek (' + esc(i.eklenme) + ')</div>' +
         '</div></div></div>';
@@ -651,6 +658,23 @@
       return '<label class="secim"><input type="radio" name="odeme" value="' + esc(o) + '"' +
         (i === 0 ? ' checked' : '') + '><span>' + esc(o) + '</span></label>';
     }).join('');
+    if (RALLI) {
+      // Ralli: pilot + co-pilot + araç (plaka / doğum tarihi / kadın sorulmaz)
+      return '' +
+        '<label>Pilot (Ad Soyad) *<input name="pilot" required value="' + esc(k.pilot) + '"></label>' +
+        '<label>Co-Pilot (Ad Soyad)<input name="copilot" value="' + esc(k.copilot) + '"></label>' +
+        '<label>Telefon<input name="telefon" type="tel" inputmode="tel" placeholder="0533 860 54 27" value="' + esc(telBicim(k.telefon)) + '"></label>' +
+        '<div class="iki">' +
+        '<label>Marka<input name="marka" value="' + esc(k.marka) + '"></label>' +
+        '<label>Model<input name="model" value="' + esc(k.model) + '"></label></div>' +
+        '<label>Üretim Yılı *<input name="yil" inputmode="numeric" maxlength="4" placeholder="Örn. 1972" value="' + esc(k.yil) + '"></label>' +
+        '<label>Not<input name="not" value="' + esc(k.not) + '"></label>' +
+        '<div class="alan-baslik">Ödeme</div><div class="secimler">' + odemeler + '</div>' +
+        '<label>Tutar *<input name="tutar" type="number" inputmode="decimal" min="0" step="any" value="' + esc(ucret()) + '"></label>' +
+        '<div class="kart-butonlar">' +
+        '<button type="submit" class="btn birincil buyuk">' + (yeni ? '＋ Kaydet ve Numara Ver' : '✅ Onayla ve Numara Ver') + '</button>' +
+        (yeni ? '' : '<button type="button" class="btn ince" data-kapat>Vazgeç</button>') + '</div>';
+    }
     return '' +
       '<label>Pilot (Ad Soyad) *<input name="pilot" required value="' + esc(k.pilot) + '"></label>' +
       '<label>Telefon<input name="telefon" type="tel" inputmode="tel" placeholder="0533 860 54 27" value="' + esc(telBicim(k.telefon)) + '"></label>' +
@@ -675,6 +699,17 @@
     const odeme = f.get('odeme') || '';
     let tutar = String(f.get('tutar') || '').replace(',', '.').trim();
     if (odeme === 'Ücretsiz' && tutar === '') tutar = '0';
+    if (RALLI) {
+      return {
+        alanlar: {
+          pilot: buyuk(f.get('pilot')), copilot: buyuk(f.get('copilot')), telefon: telBicim(f.get('telefon')),
+          marka: buyuk(f.get('marka')), model: buyuk(f.get('model')),
+          yil: String(f.get('yil') || '').trim(), not: buyuk(f.get('not'))
+        },
+        odeme: odeme,
+        tutar: tutar
+      };
+    }
     return {
       alanlar: {
         pilot: buyuk(f.get('pilot')), telefon: telBicim(f.get('telefon')),
@@ -907,7 +942,7 @@
     waAktifGoster();
     $('ayUrl').value = ayar.url;
     $('ayAnahtar').value = ayar.anahtar;
-    $('ayTutar').value = ayar.tutar;
+    $('ayTutar').value = (RALLI ? ayar.tutarRalli : ayar.tutar) || '';
     $('ayWaHedef').value = ayar.waHedef || 'uygulama';
     $('ayWaVarsayilan').value = ayar.waVarsayilan || 'otomatik';
     $('ayMasa').innerHTML = (C.masalar || ['Masa 1']).map(function (m) {
@@ -925,7 +960,9 @@
       !confirm('Gönderilmemiş ' + kuyruk.length + ' işlem var. Masa değişirse bu işlemler eski masa adıyla gönderilir. Devam edilsin mi?')) return;
     ayar = {
       url: url, anahtar: $('ayAnahtar').value.trim().toUpperCase(),
-      masa: $('ayMasa').value, tutar: $('ayTutar').value.trim(),
+      masa: $('ayMasa').value,
+      tutar: RALLI ? (ayar.tutar || '') : $('ayTutar').value.trim(),
+      tutarRalli: RALLI ? $('ayTutar').value.trim() : (ayar.tutarRalli || ''),
       waHedef: $('ayWaHedef').value, waVarsayilan: $('ayWaVarsayilan').value
     };
     yaz(D.ayar, ayar);
@@ -945,8 +982,34 @@
   $('hataTemizle').addEventListener('click', function () { hatalar = []; yaz(D.hatalar, hatalar); cizAyarlar(); });
 
   // ---------------- Başlangıç ----------------
-  document.title = C.uygulamaAdi || document.title;
-  $('baslik').textContent = C.uygulamaAdi || 'Kayıt';
+  const uygAdi = RALLI ? (C.ralliUygulamaAdi || 'RalliX Kayıt') : (C.uygulamaAdi || 'Kayıt');
+  document.title = uygAdi;
+  $('baslik').textContent = uygAdi;
+  document.body.classList.toggle('mod-ralli', RALLI);
+  // Bölüm düğmeleri (SLALOMX / RALLIX)
+  document.querySelectorAll('.modlar button').forEach(function (b) {
+    b.classList.toggle('aktif', b.dataset.mod === MOD);
+    b.addEventListener('click', function () {
+      if (b.dataset.mod === MOD) return;
+      if (kuyruk.length) {
+        alert('Bu bölümde gönderilmemiş ' + kuyruk.length + ' işlem var.\n\nİnternet gelip işlemler gönderildikten sonra bölüm değiştirin.');
+        return;
+      }
+      try { localStorage.setItem(ON0 + 'mod', b.dataset.mod); } catch (e) { /* yok */ }
+      location.reload();
+    });
+  });
+  if (RALLI) {
+    // Ralli kayıtları formdan gelmez: Bekleyenler yok, kayıtlar masada alınır
+    document.querySelector('.sekmeler [data-sekme="bekleyen"]').classList.add('gizli');
+    $('uyariBandi').classList.add('gizli');
+    document.querySelector('#s-yeni h2').textContent = 'Masada Yeni Ralli Kaydı';
+    document.querySelector('#s-yeni .aciklama').textContent = 'Pilot ve co-pilotu buradan kaydedin. Kapı numarası sıradan verilir (slalomdan bağımsız).';
+    $('araOnayli').placeholder = '🔍 Pilot, co-pilot veya kapı no ara';
+    const tl = $('ayTutar').closest('label');
+    if (tl && tl.firstChild) tl.firstChild.textContent = 'Varsayılan ralli kayıt ücreti';
+    sekmeAc('onayli');
+  }
   ayarlariDoldur();
   yeniFormuHazirla();
   ciz();
