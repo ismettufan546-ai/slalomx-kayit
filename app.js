@@ -30,7 +30,7 @@
   let gorulen = new Set(oku(D.gorulen, []));
   let ilkSenkron = gorulen.size === 0;
   let sekme = RALLI ? 'onayli' : 'bekleyen';
-  let filtre = 'benim';
+  let filtre = RALLI ? 'tumu' : 'benim';   // ralli listesi tek tablodan gelir: varsayılan Tümü
   let senkronCalisiyor = false;
   let tekrarGerek = false;          // senkron sırasında yeni işlem eklendiyse
   let sonBaglanti = null;           // true / false / null
@@ -523,7 +523,7 @@
     const kat = { 'Ç': 'ÇİFT', 'C': 'ÇİFT', 'K': 'KADIN' }[String(k.kategori || '').toUpperCase()] || k.kategori;
     const kisiOda = [k.kisi ? '👥 ' + k.kisi + ' kişi' : '',
       k.oda !== '' && k.oda !== undefined ? (String(k.oda) === '0' ? '🏨 konaklama yok' : '🏨 ' + k.oda + ' oda') : '',
-      k.odaTipi, k.talep ? 'Talep: ' + k.talep : ''].filter(Boolean).join(' · ');
+      /KONAKLAMA YOK/i.test(k.odaTipi || '') ? '' : k.odaTipi, k.talep ? 'Talep: ' + k.talep : ''].filter(Boolean).join(' · ');
     return (kat || k.cup ? '<div class="kart-arac">' + (kat ? '<span class="etiket">' + esc(kat) + '</span> ' : '') +
         (k.cup ? '<span class="etiket cup">' + esc(k.cup) + ' CUP</span>' : '') + '</div>' : '') +
       (kisiOda ? '<div class="kart-bilgi">' + esc(kisiOda) + '</div>' : '') +
@@ -1034,6 +1034,7 @@
     $('araOnayli').placeholder = '🔍 Pilot, co-pilot veya kapı no ara';
     const tl = $('ayTutar').closest('label');
     if (tl && tl.firstChild) tl.firstChild.textContent = 'Varsayılan ralli kayıt ücreti';
+    document.querySelectorAll('.filtre button').forEach(function (x) { x.classList.toggle('aktif', x.dataset.filtre === filtre); });
     sekmeAc('onayli');
   }
   ayarlariDoldur();
