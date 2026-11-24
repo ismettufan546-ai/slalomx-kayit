@@ -675,6 +675,12 @@
     cizBekleyen();
     cizOnayli();
     cizAyarlar();
+    if (RALLI) {
+      // Ralli formu kapalıyken Bekleyenler sekmesi gizli (formdan kayıt gelirse kendiliğinden görünür)
+      const var_ = veri.kayitlar.some(function (k) { return k.durum === 'Bekliyor'; });
+      const b = document.querySelector('.sekmeler [data-sekme="bekleyen"]');
+      if (b) b.classList.toggle('gizli', !var_);
+    }
   }
 
   // ---------------- Form alanları ----------------

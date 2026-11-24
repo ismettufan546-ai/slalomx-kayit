@@ -4,7 +4,7 @@
 // ============================================================
 window.KAYIT_AYAR = {
   uygulamaAdi: 'SlalomX Kayıt',
-  surum: 'v33',
+  surum: 'v34',
   ralliUygulamaAdi: 'RalliX Kayıt',
   ralliTutar: 0,           // Ayarlar'da ralli ücreti girilmemişse (0 = varsayılanTutar kullanılır)
   program: 'SlalomX',
