@@ -478,7 +478,7 @@
   function aramaUyar(k, metin) {
     if (!metin) return true;
     const n = normal(metin);
-    return [k.pilot, k.copilot, k.marka, k.model, k.plaka, k.telefon, k.kapiNo, k.yil].some(function (x) {
+    return [k.pilot, k.copilot, k.marka, k.model, k.plaka, k.telefon, k.kapiNo, k.yil, k.cup].some(function (x) {
       return normal(x).indexOf(n) >= 0;
     });
   }
@@ -503,9 +503,32 @@
     if (d.length === 11 && d[0] === '0') return d.slice(0, 4) + ' ' + d.slice(4, 7) + ' ' + d.slice(7, 9) + ' ' + d.slice(9);
     return ham;
   }
+  // Kayda özel ücret (ralli listesinde kişi/oda sayısına göre) yoksa varsayılan ücret
+  function kayitUcreti(k) {
+    const u = Number(String(k && k.ucret !== undefined ? k.ucret : '').replace(/[^0-9]/g, ''));
+    return u > 0 ? String(u) : ucret();
+  }
   function ucret() {
     const t = String((RALLI ? ayar.tutarRalli : ayar.tutar) || '').replace(',', '.').trim();
     return t !== '' && !isNaN(Number(t)) ? t : String((RALLI ? C.ralliTutar : 0) || C.varsayilanTutar || 0);
+  }
+
+  function tl(n) {
+    const x = Number(String(n === undefined || n === null ? '' : n).replace(/[^0-9.,-]/g, '').replace(/\./g, '').replace(',', '.'));
+    return isNaN(x) || String(n).trim() === '' ? '' : x.toLocaleString('tr-TR') + ' TL';
+  }
+  // Ralli: listeden gelen konaklama bilgisi ve ödenecek ücret (açıklamasıyla)
+  function ralliBilgi(k) {
+    if (!RALLI) return '';
+    const kat = { 'Ç': 'ÇİFT', 'C': 'ÇİFT', 'K': 'KADIN' }[String(k.kategori || '').toUpperCase()] || k.kategori;
+    const kisiOda = [k.kisi ? '👥 ' + k.kisi + ' kişi' : '',
+      k.oda !== '' && k.oda !== undefined ? (String(k.oda) === '0' ? '🏨 konaklama yok' : '🏨 ' + k.oda + ' oda') : '',
+      k.odaTipi, k.talep ? 'Talep: ' + k.talep : ''].filter(Boolean).join(' · ');
+    return (kat || k.cup ? '<div class="kart-arac">' + (kat ? '<span class="etiket">' + esc(kat) + '</span> ' : '') +
+        (k.cup ? '<span class="etiket cup">' + esc(k.cup) + ' CUP</span>' : '') + '</div>' : '') +
+      (kisiOda ? '<div class="kart-bilgi">' + esc(kisiOda) + '</div>' : '') +
+      (tl(k.ucret) ? '<div class="kart-ucret">💰 Ödenecek: <b>' + esc(tl(k.ucret)) + '</b>' +
+        (k.ucretAciklama ? '<small>' + esc(k.ucretAciklama) + '</small>' : '') + '</div>' : '');
   }
 
   function kartAlt(k) {
@@ -513,12 +536,12 @@
     return '<div class="kart-arac">' + esc(arac || '—') +
       (k.plaka ? ' <span class="plaka">' + esc(k.plaka) + '</span>' : '') +
       (k.yil ? ' <span class="yil">' + esc(k.yil) + '</span>' : ' <span class="yil eksik">YIL YOK</span>') +
-      (klasmanBul(k.yil) ? ' <span class="klasman">' + esc(klasmanBul(k.yil)) + '</span>' : '') +
-      (k.kadin ? ' <span class="etiket">KADIN</span>' : '') +
+      ((k.klasman || klasmanBul(k.yil)) ? ' <span class="klasman">' + esc(k.klasman || klasmanBul(k.yil)) + '</span>' : '') +
+      (k.kadin && !RALLI ? ' <span class="etiket">KADIN</span>' : '') +
       (k.genc ? ' <span class="etiket genc">GENÇ</span>' : '') + '</div>' +
       (k.copilot ? '<div class="kart-copilot">🧭 Co-Pilot: ' + esc(k.copilot) + '</div>' : '') +
       (k.telefon ? '<div class="kart-tel">📞 ' + esc(telBicim(k.telefon)) + '</div>' : '') +
-      uyariNotu(k.not);
+      ralliBilgi(k) + uyariNotu(k.not);
   }
   /** Nottan sadece ⚠ uyarıları (yıl yok, mükerrer) gösterilir; saat/masa kayıtları gösterilmez. */
   function uyariNotu(not) {
@@ -761,7 +784,10 @@
     if (!k) return;
     $('pencereBaslik').textContent = '💳 Ödeme — ' + k.pilot + (k.kapiNo ? ' (Kapı No ' + k.kapiNo + ')' : '');
     const form = $('formOnay');
-    form.innerHTML = '<p class="aciklama">Ücret: <b>' + esc(ucret()) + ' TL</b> — ödeme tipine dokunun.</p>' +
+    const tutar = kayitUcreti(k);
+    form.dataset.tutar = tutar;
+    form.innerHTML = '<p class="aciklama">Ücret: <b>' + esc(tl(tutar) || tutar + ' TL') + '</b>' +
+      (RALLI && k.ucretAciklama ? '<br><small>' + esc(k.ucretAciklama) + '</small>' : '') + ' — ödeme tipine dokunun.</p>' +
       '<div class="secimler odeme-tus">' + (C.odemeTipleri || []).map(function (o) {
         return '<button type="button" class="btn birincil buyuk" data-odeme-tipi="' + esc(o) + '">' + esc(o) + '</button>';
       }).join('') + '</div>' +
@@ -775,7 +801,7 @@
     if (!tus) return;
     const odeme = tus.getAttribute('data-odeme-tipi');
     kuyrugaEkle({ islem: 'isaretle', kayitId: e.currentTarget.dataset.kayitId, alan: 'odeme', deger: true,
-                  odeme: odeme, tutar: odeme === 'Ücretsiz' ? '0' : ucret() });
+                  odeme: odeme, tutar: odeme === 'Ücretsiz' ? '0' : (e.currentTarget.dataset.tutar || ucret()) });
     pencereKapat();
   });
 

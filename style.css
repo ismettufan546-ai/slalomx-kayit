@@ -214,3 +214,8 @@ h3 { margin: 22px 0 8px; font-size: 15px; color: var(--soluk); }
 .modlar button:not(.aktif) { opacity: .75; }
 .kart-copilot { margin-top: 3px; font-size: 14px; color: var(--soluk); font-weight: 700; }
 body.mod-ralli .kapi { background: #f5b400; }
+.kart-ucret { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(245, 180, 0, .12);
+  border: 1px solid rgba(245, 180, 0, .45); color: var(--yazi); font-size: 15px; }
+.kart-ucret b { color: var(--vurgu); font-size: 17px; }
+.kart-ucret small { display: block; margin-top: 2px; color: var(--soluk); font-size: 13px; }
+.etiket.cup { background: #2563eb; }
