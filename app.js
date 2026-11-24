@@ -167,7 +167,7 @@
     const yeniler = bekleyenler.filter(function (k) { return !gorulen.has(k.id); });
     veri.kayitlar.forEach(function (k) { gorulen.add(k.id); });
     yaz(D.gorulen, Array.from(gorulen).slice(-2000));
-    if (!ilkSenkron && yeniler.length && !RALLI) {
+    if (!ilkSenkron && yeniler.length) {
       const bant = $('uyariBandi');
       bant.textContent = '🔔 ' + (yeniler.length === 1
         ? 'Yeni kayıt bekliyor: ' + yeniler[0].pilot
@@ -528,6 +528,8 @@
         (k.cup ? '<span class="etiket cup">' + esc(k.cup) + ' CUP</span>' : '') + '</div>' : '') +
       (kisiOda ? '<div class="kart-bilgi">' + esc(kisiOda) + '</div>' : '') +
       (tl(k.ucret) ? '<div class="kart-ucret">💰 Ödenecek: <b>' + esc(tl(k.ucret)) + '</b>' +
+        (k.odemeKismi ? ' · Ödenen ' + esc(tl(k.tutar)) + ' · <span class="kalan">Kalan ' +
+          esc(tl(Math.max(0, (Number(k.ucret) || 0) - (Number(k.tutar) || 0)))) + '</span>' : '') +
         (k.ucretAciklama ? '<small>' + esc(k.ucretAciklama) + '</small>' : '') + '</div>' : '');
   }
 
@@ -604,7 +606,7 @@
       if (islem) {
         alt = '<div class="durum-satir sari">⏳ ' + (islem.islem === 'reddet' ? 'Red gönderiliyor' : 'Onay gönderiliyor') + '</div>';
       } else if (k.slalomx) {
-        alt = '<div class="durum-satir yesil">✓ ' + esc(C.program || 'Program') + '\'e alındı</div>';
+        alt = '<div class="durum-satir yesil">✓ ' + esc(RALLI ? 'RalliX' : (C.program || 'Program')) + '\'e alındı</div>';
       } else if (k.durum === 'Onaylandı' && k.masa === ayar.masa) {
         alt = '<div class="kart-butonlar"><button class="btn tehlike ince" data-reddet="' + esc(k.id) + '">Reddedilenlere al</button></div>';
       } else if (k.durum === 'Reddedildi' && (!k.masa || k.masa === ayar.masa || k.masa === 'SlalomX')) {
@@ -651,7 +653,8 @@
     return '<div class="isaretler">' +
       (kilitli ? '<button class="isaret kilitli" data-kapikilit="1"><span class="kutu">🔒</span>🎫 Kapı No' +
         '<small>' + esc(kapiKilitMetni()) + '\'den sonra</small></button>' : tus('kapi', kapi, '🎫 Kapı No', '')) +
-      tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + (k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar : '') : '') + '</div>';
+      tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + (k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar : '')
+        : (RALLI && k.odemeKismi ? 'Kısmi · kalan ' + tl(Math.max(0, (Number(k.ucret) || 0) - (Number(k.tutar) || 0))) : '')) + '</div>';
   }
 
   function cizAyarlar() {
@@ -784,10 +787,16 @@
     if (!k) return;
     $('pencereBaslik').textContent = '💳 Ödeme — ' + k.pilot + (k.kapiNo ? ' (Kapı No ' + k.kapiNo + ')' : '');
     const form = $('formOnay');
-    const tutar = kayitUcreti(k);
-    form.dataset.tutar = tutar;
-    form.innerHTML = '<p class="aciklama">Ücret: <b>' + esc(tl(tutar) || tutar + ' TL') + '</b>' +
-      (RALLI && k.ucretAciklama ? '<br><small>' + esc(k.ucretAciklama) + '</small>' : '') + ' — ödeme tipine dokunun.</p>' +
+    const ucretToplam = Number(kayitUcreti(k)) || 0;
+    const odenen = RALLI && k.odemeKismi ? (Number(k.tutar) || 0) : 0;
+    const kalan = Math.max(0, ucretToplam - odenen);
+    form.innerHTML = '<p class="aciklama">Ödenecek: <b>' + esc(tl(ucretToplam) || '0 TL') + '</b>' +
+      (odenen ? '  ·  Ödenen: <b>' + esc(tl(odenen)) + '</b>  ·  Kalan: <b class="kalan">' + esc(tl(kalan)) + '</b>' : '') +
+      (RALLI && k.ucretAciklama ? '<br><small>' + esc(k.ucretAciklama) + '</small>' : '') + '</p>' +
+      '<label class="odeme-tutar">Alınan tutar (değiştirilebilir)<input name="odemeTutar" type="number" inputmode="decimal" min="0" step="any" value="' +
+      esc(String(kalan || ucretToplam || '')) + '"></label>' +
+      (RALLI ? '<p class="ipucu">Eksik alınırsa kalan tutar bakiye olarak kalır; sonra kalan için tekrar Ödeme\'ye dokunun.</p>' : '') +
+      '<p class="aciklama">Ödeme tipine dokunun:</p>' +
       '<div class="secimler odeme-tus">' + (C.odemeTipleri || []).map(function (o) {
         return '<button type="button" class="btn birincil buyuk" data-odeme-tipi="' + esc(o) + '">' + esc(o) + '</button>';
       }).join('') + '</div>' +
@@ -800,8 +809,14 @@
     const tus = e.target.closest('[data-odeme-tipi]');
     if (!tus) return;
     const odeme = tus.getAttribute('data-odeme-tipi');
+    const giris = e.currentTarget.querySelector('[name=odemeTutar]');
+    const tutar = String(giris ? giris.value : '').replace(',', '.').trim();
+    if (odeme !== 'Ücretsiz' && (tutar === '' || isNaN(Number(tutar)) || Number(tutar) <= 0)) {
+      bildir('⚠ Alınan tutarı girin.', 'hata');
+      return;
+    }
     kuyrugaEkle({ islem: 'isaretle', kayitId: e.currentTarget.dataset.kayitId, alan: 'odeme', deger: true,
-                  odeme: odeme, tutar: odeme === 'Ücretsiz' ? '0' : (e.currentTarget.dataset.tutar || ucret()) });
+                  odeme: odeme, tutar: odeme === 'Ücretsiz' ? '0' : tutar });
     pencereKapat();
   });
 
@@ -874,7 +889,7 @@
       const id = isaret.getAttribute('data-id'), alan = isaret.getAttribute('data-isaret');
       const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
       const d = isaretDurumu(k, alan);
-      if (alan === 'odeme' && !d.acik) { odemeAc(id); return; }   // ekran açılır, yönteme dokununca biter
+      if (alan === 'odeme' && !d.acik) { odemeAc(id); return; }   // ekran açılır, yönteme dokununca biter (kısmi: kalan)
       if (d.acik && !confirm('"' + k.pilot + '" için ' + (alan === 'kapi' ? 'Kapı No verildi' : 'Ödeme alındı') +
         ' işareti kaldırılsın mı?')) return;
       kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: alan, deger: !d.acik });
@@ -1026,9 +1041,7 @@
     });
   });
   if (RALLI) {
-    // Ralli kayıtları formdan gelmez: Bekleyenler yok, kayıtlar masada alınır
-    document.querySelector('.sekmeler [data-sekme="bekleyen"]').classList.add('gizli');
-    $('uyariBandi').classList.add('gizli');
+    // 24.11.2026: Ralli kayıt formu bağlandı — formdan gelenler Bekleyenler'de (onaylanınca kapı no alır)
     document.querySelector('#s-yeni h2').textContent = 'Masada Yeni Ralli Kaydı';
     document.querySelector('#s-yeni .aciklama').textContent = 'Pilot ve co-pilotu buradan kaydedin. Kapı numarası sıradan verilir (slalomdan bağımsız).';
     $('araOnayli').placeholder = '🔍 Pilot, co-pilot veya kapı no ara';

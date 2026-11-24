@@ -219,3 +219,5 @@ body.mod-ralli .kapi { background: #f5b400; }
 .kart-ucret b { color: var(--vurgu); font-size: 17px; }
 .kart-ucret small { display: block; margin-top: 2px; color: var(--soluk); font-size: 13px; }
 .etiket.cup { background: #2563eb; }
+.kalan { color: #f87171; font-weight: 800; }
+.odeme-tutar input { font-size: 22px; font-weight: 800; }
