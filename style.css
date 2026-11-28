@@ -226,3 +226,12 @@ body.mod-ralli .kapi { background: #f5b400; }
 .ucret-duzenle { float: right; margin: -2px -2px 0 8px; width: 38px; height: 38px; border-radius: 8px; cursor: pointer;
   border: 1px solid rgba(245, 180, 0, .55); background: rgba(245, 180, 0, .15); color: var(--yazi); font-size: 18px; line-height: 1; }
 .ucret-duzenle:hover { background: rgba(245, 180, 0, .3); }
+/* Ralli: Katılamayacak (28.11.2026) */
+.isaretler.tek { margin-top: 8px; }
+.katilim-tus { border-color: rgba(248, 113, 113, .45); color: #f87171; }
+.katilim-tus .kutu { border-color: #f87171; }
+.kart.katilmiyor { opacity: .72; border-color: rgba(248, 113, 113, .55); }
+.kart.katilmiyor .kapi { background: #6b7280; }
+.katilim-bant { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(248, 113, 113, .14); border: 1px solid rgba(248, 113, 113, .55);
+  color: #f87171; font-weight: 800; }

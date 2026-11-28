@@ -210,7 +210,8 @@
       if (s.ok) {
         if (i.islem === 'isaretle') {
           bildir('✓ ' + ((s.kayit && s.kayit.pilot) || '') + ': ' +
-            (i.alan === 'ucret' ? 'Tutarlar güncellendi' : (i.alan === 'kapi' ? 'Kapı No' : 'Ödeme') +
+            (i.alan === 'katilim' ? (i.deger ? 'Katılamayacak işaretlendi' : 'Tekrar katılacak') :
+             i.alan === 'ucret' ? 'Tutarlar güncellendi' : (i.alan === 'kapi' ? 'Kapı No' : 'Ödeme') +
               (i.deger ? ' işaretlendi' : ' işareti kaldırıldı')), 'tamam');
         } else if (s.kayit && s.kayit.kapiNo && i.islem !== 'reddet') {
           kapiGoster(s.kayit, i.eklenme);
@@ -598,7 +599,9 @@
     $('redSil').classList.toggle('gizli', filtre !== 'red' || !redSayi);
     $('redSil').textContent = '🗑 Reddedilenlerin hepsini sil (' + redSayi + ')';
     const durum = filtre === 'red' ? 'Reddedildi' : 'Onaylandı';
-    let liste = veri.kayitlar.filter(function (k) { return k.durum === durum; });
+    let liste = veri.kayitlar.filter(function (k) {
+      return k.durum === durum || (RALLI && durum === 'Onaylandı' && k.durum === 'Katılmıyor');
+    });
     if (filtre === 'benim') liste = liste.filter(function (k) { return k.masa === ayar.masa; });
     liste.sort(function (a, b) { return (Number(b.kapiNo) || 0) - (Number(a.kapiNo) || 0); });
     $('sayOnayli').textContent = veri.kayitlar.filter(function (k) { return k.durum === 'Onaylandı'; }).length;
@@ -629,8 +632,10 @@
       } else if (k.durum === 'Reddedildi' && k.masa) {
         alt = '<div class="durum-satir">🔒 ' + esc(k.masa) + ' reddetti</div>';
       }
-      if (k.durum === 'Onaylandı') alt = isaretlerHtml(k) + (k.kapiNo ? '<div class="kart-butonlar">' + waDugme(k) + '</div>' : '') + alt;
-      return '<div class="kart' + (islem ? ' soluk' : '') + '"><div class="kart-ust"><div class="kapi' + (k.durum === 'Reddedildi' ? ' red' : '') + '">' +
+      const katilmiyor = RALLI && katilimDurumu(k).acik;
+      if (katilmiyor) alt = katilimHtml(k) + alt;
+      else if (k.durum === 'Onaylandı') alt = isaretlerHtml(k) + (k.kapiNo ? '<div class="kart-butonlar">' + waDugme(k) + '</div>' : '') + alt;
+      return '<div class="kart' + (islem ? ' soluk' : '') + (katilmiyor ? ' katilmiyor' : '') + '"><div class="kart-ust"><div class="kapi' + (k.durum === 'Reddedildi' ? ' red' : '') + '">' +
         esc(k.kapiNo || '–') + '</div><div class="kart-govde">' +
         '<div class="kart-pilot">' + esc(k.pilot) + '</div>' + kartAlt(k) + alt +
         '</div></div></div>';
@@ -669,7 +674,21 @@
       (kilitli ? '<button class="isaret kilitli" data-kapikilit="1"><span class="kutu">🔒</span>🎫 Kapı No' +
         '<small>' + esc(kapiKilitMetni()) + '\'den sonra</small></button>' : tus('kapi', kapi, '🎫 Kapı No', '')) +
       tus('odeme', odeme, '💳 Ödeme', odeme.acik && k.odeme ? k.odeme + (k.tutar !== '' && k.tutar !== undefined ? ' ' + k.tutar : '')
-        : (RALLI && k.odemeKismi ? 'Kısmi · kalan ' + tl(Math.max(0, (Number(k.ucret) || 0) - (Number(k.tutar) || 0))) : '')) + '</div>';
+        : (RALLI && k.odemeKismi ? 'Kısmi · kalan ' + tl(Math.max(0, (Number(k.ucret) || 0) - (Number(k.tutar) || 0))) : '')) + '</div>' +
+      (RALLI ? katilimHtml(k) : '');
+  }
+  // Ralli: 'Katılamayacak' (Durum = Katılmıyor) — Kapı No'nun altında; start listesine girmez, ödeme bilgisi korunur
+  function katilimDurumu(k) {
+    const b = kuyruk.filter(function (i) { return i.kayitId === k.id && i.islem === 'isaretle' && i.alan === 'katilim'; }).pop();
+    return { acik: b ? !!b.deger : k.durum === 'Katılmıyor', bekliyor: !!b };
+  }
+  function katilimHtml(k) {
+    const d = katilimDurumu(k);
+    return d.acik
+      ? '<div class="katilim-bant">🚫 KATILAMAYACAK' + (d.bekliyor ? ' ⏳' : '') +
+        '<button type="button" class="btn ince" data-katilim="' + esc(k.id) + '">↩ Katılacak</button></div>'
+      : '<div class="isaretler tek"><button type="button" class="isaret katilim-tus" data-katilim="' + esc(k.id) + '">' +
+        '<span class="kutu"></span>🚫 Katılamayacak' + (d.bekliyor ? ' ⏳' : '') + '</button></div>';
   }
 
   function cizAyarlar() {
@@ -946,6 +965,22 @@
     if (e.target.closest('[data-kapikilit]')) {
       alert('🔒 Kapı numaraları ' + kapiKilitMetni() + '\'den sonra verilir.\n\n' +
             'Numaralar o zamana kadar yıla göre yeniden dağıtılabilir. Ödeme şimdi alınabilir.');
+      return;
+    }
+    const kat = e.target.closest('[data-katilim]');
+    if (kat) {
+      const id = kat.getAttribute('data-katilim');
+      const k = veri.kayitlar.find(function (x) { return x.id === id; }) || {};
+      const acik = katilimDurumu(k).acik;
+      if (!acik) {
+        const sebep = prompt('"' + k.pilot + '" KATILAMAYACAK olarak işaretlensin mi?\n\n' +
+          'Start listesine girmez; kapı no ve ödeme bilgisi korunur, sonra geri alınabilir.\n\nSebep (isteğe bağlı):', '');
+        if (sebep === null) return;
+        kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: 'katilim', deger: true, sebep: sebep });
+      } else {
+        if (!confirm('"' + k.pilot + '" tekrar KATILACAK olarak işaretlensin mi?')) return;
+        kuyrugaEkle({ islem: 'isaretle', kayitId: id, alan: 'katilim', deger: false });
+      }
       return;
     }
     const duz = e.target.closest('[data-ucret-duzenle]');
