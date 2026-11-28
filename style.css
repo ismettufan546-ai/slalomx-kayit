@@ -221,3 +221,8 @@ body.mod-ralli .kapi { background: #f5b400; }
 .etiket.cup { background: #2563eb; }
 .kalan { color: #f87171; font-weight: 800; }
 .odeme-tutar input { font-size: 22px; font-weight: 800; }
+/* Ralli: ödenecek / ödenen düzenleme ikonu (28.11.2026) */
+.kart-ucret::after { content: ''; display: block; clear: both; }
+.ucret-duzenle { float: right; margin: -2px -2px 0 8px; width: 38px; height: 38px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(245, 180, 0, .55); background: rgba(245, 180, 0, .15); color: var(--yazi); font-size: 18px; line-height: 1; }
+.ucret-duzenle:hover { background: rgba(245, 180, 0, .3); }

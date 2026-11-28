@@ -210,7 +210,8 @@
       if (s.ok) {
         if (i.islem === 'isaretle') {
           bildir('✓ ' + ((s.kayit && s.kayit.pilot) || '') + ': ' +
-            (i.alan === 'kapi' ? 'Kapı No' : 'Ödeme') + (i.deger ? ' işaretlendi' : ' işareti kaldırıldı'), 'tamam');
+            (i.alan === 'ucret' ? 'Tutarlar güncellendi' : (i.alan === 'kapi' ? 'Kapı No' : 'Ödeme') +
+              (i.deger ? ' işaretlendi' : ' işareti kaldırıldı')), 'tamam');
         } else if (s.kayit && s.kayit.kapiNo && i.islem !== 'reddet') {
           kapiGoster(s.kayit, i.eklenme);
         } else if (i.islem === 'reddet') {
@@ -527,10 +528,24 @@
     return (kat || k.cup ? '<div class="kart-arac">' + (kat ? '<span class="etiket">' + esc(kat) + '</span> ' : '') +
         (k.cup ? '<span class="etiket cup">' + esc(k.cup) + ' CUP</span>' : '') + '</div>' : '') +
       (kisiOda ? '<div class="kart-bilgi">' + esc(kisiOda) + '</div>' : '') +
-      (tl(k.ucret) ? '<div class="kart-ucret">💰 Ödenecek: <b>' + esc(tl(k.ucret)) + '</b>' +
-        (k.odemeKismi ? ' · Ödenen ' + esc(tl(k.tutar)) + ' · <span class="kalan">Kalan ' +
-          esc(tl(Math.max(0, (Number(k.ucret) || 0) - (Number(k.tutar) || 0)))) + '</span>' : '') +
-        (k.ucretAciklama ? '<small>' + esc(k.ucretAciklama) + '</small>' : '') + '</div>' : '');
+      ralliUcretHtml(k);
+  }
+  // Ödenecek / ödenen bölümü; onaylı kayıtta sağda ✏️ düzenle (toplam ödenecek + ödenen değiştirilir)
+  function ralliUcretHtml(k) {
+    const b = ucretBekleyen(k);
+    const ucret = b ? Number(b.ucret) || 0 : Number(k.ucret) || 0;
+    const odenen = b ? Number(b.tutar) || 0 : (k.odemeAlindi || k.odemeKismi ? Number(k.tutar) || 0 : 0);
+    const duzenle = k.durum === 'Onaylandı'
+      ? '<button type="button" class="ucret-duzenle" data-ucret-duzenle="' + esc(k.id) + '" title="Ödenecek / ödenen tutarı düzenle">✏️</button>' : '';
+    if (!ucret && !odenen && !duzenle) return '';
+    const kalan = Math.max(0, ucret - odenen);
+    return '<div class="kart-ucret">' + duzenle + '💰 Ödenecek: <b>' + esc(tl(ucret) || '—') + '</b>' +
+      (odenen ? ' · Ödenen ' + esc(tl(odenen)) + (kalan ? ' · <span class="kalan">Kalan ' + esc(tl(kalan)) + '</span>' : '') : '') +
+      (b ? ' ⏳' : '') +
+      (k.ucretAciklama ? '<small>' + esc(k.ucretAciklama) + '</small>' : '') + '</div>';
+  }
+  function ucretBekleyen(k) {
+    return kuyruk.filter(function (i) { return i.kayitId === k.id && i.islem === 'isaretle' && i.alan === 'ucret'; }).pop();
   }
 
   function kartAlt(k) {
@@ -811,6 +826,37 @@
     form.dataset.mod = 'odeme';
     $('pencere').classList.remove('gizli');
   }
+  function ucretDuzenleAc(kayitId) {
+    const k = veri.kayitlar.find(function (x) { return x.id === kayitId; });
+    if (!k) return;
+    const b = ucretBekleyen(k);
+    const ucret = b ? Number(b.ucret) || 0 : Number(kayitUcreti(k)) || 0;
+    const odenen = b ? Number(b.tutar) || 0 : (k.odemeAlindi || k.odemeKismi ? Number(k.tutar) || 0 : 0);
+    $('pencereBaslik').textContent = '✏️ Tutar Düzenle — ' + k.pilot + (k.kapiNo ? ' (Kapı No ' + k.kapiNo + ')' : '');
+    const form = $('formOnay');
+    form.innerHTML = (k.ucretAciklama ? '<p class="aciklama"><small>' + esc(k.ucretAciklama) + '</small></p>' : '') +
+      '<label class="odeme-tutar">Toplam ödenecek (TL)<input name="duzUcret" type="number" inputmode="decimal" min="0" step="any" value="' + esc(String(ucret)) + '"></label>' +
+      '<label class="odeme-tutar">Ödenen (TL)<input name="duzOdenen" type="number" inputmode="decimal" min="0" step="any" value="' + esc(String(odenen)) + '"></label>' +
+      (k.odeme ? '' : '<label>Ödeme tipi (ödenen varsa)<select name="duzTip">' + (C.odemeTipleri || []).filter(function (o) { return o !== 'Ücretsiz'; })
+        .map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></label>') +
+      '<p class="ipucu" data-duz-ozet></p>' +
+      '<div class="kart-butonlar"><button type="button" class="btn ince" data-kapat>Vazgeç</button>' +
+      '<button type="submit" class="btn birincil">Kaydet</button></div>';
+    form.dataset.kayitId = kayitId;
+    form.dataset.mod = 'ucret';
+    duzOzet(form);
+    $('pencere').classList.remove('gizli');
+  }
+  function duzOzet(form) {
+    const o = form.querySelector('[data-duz-ozet]');
+    if (!o) return;
+    const u = Number(String(form.duzUcret.value).replace(',', '.')) || 0, d = Number(String(form.duzOdenen.value).replace(',', '.')) || 0;
+    o.innerHTML = d <= 0 ? 'Ödeme alınmamış sayılır.' : d >= u ? '✓ Ödeme tamam' + (d > u ? ' (fazla: ' + esc(tl(d - u)) + ')' : '') + '.'
+      : 'Kalan bakiye: <b class="kalan">' + esc(tl(u - d)) + '</b>';
+  }
+  $('formOnay').addEventListener('input', function (e) {
+    if (e.currentTarget.dataset.mod === 'ucret') duzOzet(e.currentTarget);
+  });
   $('formOnay').addEventListener('click', function (e) {
     const tus = e.target.closest('[data-odeme-tipi]');
     if (!tus) return;
@@ -829,6 +875,18 @@
   $('formOnay').addEventListener('submit', function (e) {
     e.preventDefault();
     if (e.target.dataset.mod === 'odeme') return;
+    if (e.target.dataset.mod === 'ucret') {
+      const f = e.target;
+      const u = String(f.duzUcret.value).replace(',', '.').trim(), o = String(f.duzOdenen.value).replace(',', '.').trim() || '0';
+      if (u === '' || isNaN(Number(u)) || Number(u) < 0 || isNaN(Number(o)) || Number(o) < 0) {
+        bildir('⚠ Tutarları doğru girin.', 'hata');
+        return;
+      }
+      kuyrugaEkle({ islem: 'isaretle', kayitId: f.dataset.kayitId, alan: 'ucret', ucret: Number(u), tutar: Number(o),
+                    odeme: f.duzTip ? f.duzTip.value : '' });
+      pencereKapat();
+      return;
+    }
     const d = formOku(e.target);
     const hata = formKontrol(d);
     if (hata) { bildir('⚠ ' + hata, 'hata'); return; }
@@ -890,6 +948,8 @@
             'Numaralar o zamana kadar yıla göre yeniden dağıtılabilir. Ödeme şimdi alınabilir.');
       return;
     }
+    const duz = e.target.closest('[data-ucret-duzenle]');
+    if (duz) { ucretDuzenleAc(duz.getAttribute('data-ucret-duzenle')); return; }
     const isaret = e.target.closest('[data-isaret]');
     if (isaret) {
       const id = isaret.getAttribute('data-id'), alan = isaret.getAttribute('data-isaret');
